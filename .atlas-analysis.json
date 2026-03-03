@@ -1,0 +1,124 @@
+{
+  "projectType": "saas",
+  "projectName": "Multi-Vendor Marketplace",
+  "projectDescription": "A modern multi-tenant digital marketplace enabling creators to launch storefronts, sell digital products, and manage their business with Stripe Connect integration.",
+  "theme": "palm",
+  "primaryColor": "#6366f1",
+  "lightColor": "#818cf8",
+  "darkColor": "#4f46e5",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/multi-tenancy",
+              "concepts/architecture",
+              "concepts/authentication",
+              "concepts/payments"
+            ]
+          },
+          {
+            "group": "User Guides",
+            "pages": [
+              "guides/creating-storefront",
+              "guides/managing-products",
+              "guides/stripe-setup",
+              "guides/vendor-dashboard",
+              "guides/buyer-experience"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "development/project-structure",
+              "development/payload-cms",
+              "development/trpc-api",
+              "development/database-schema",
+              "development/ui-components"
+            ]
+          },
+          {
+            "group": "Deployment",
+            "pages": [
+              "deployment/environment-variables",
+              "deployment/production-setup",
+              "deployment/database-migration"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/overview",
+              "api/authentication"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api/auth",
+              "api/products",
+              "api/tenants",
+              "api/checkout",
+              "api/categories",
+              "api/tags"
+            ]
+          },
+          {
+            "group": "Payload Collections",
+            "pages": [
+              "api/collections/users",
+              "api/collections/tenants",
+              "api/collections/products",
+              "api/collections/categories",
+              "api/collections/tags",
+              "api/collections/media"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Multi-tenant architecture with isolated vendor environments",
+    "Custom vendor subdomains and storefronts",
+    "Stripe Connect integration with automatic platform fees",
+    "Product ratings and reviews system",
+    "User purchase library for digital products",
+    "Role-based access control (super-admin, user)",
+    "Admin and merchant dashboards",
+    "Category and tag-based product filtering",
+    "Full-text search functionality",
+    "Payload CMS backend with MongoDB",
+    "Next.js 15 with App Router",
+    "shadcn/ui component library",
+    "tRPC type-safe API layer"
+  ],
+  "publicApiSurface": [
+    "auth.session - Get current user session",
+    "auth.register - Register new user and create tenant",
+    "auth.login - User authentication",
+    "products.getOne - Fetch single product by ID",
+    "products.getMany - List products with filtering and pagination",
+    "tenants.getOne - Get tenant by slug",
+    "checkout.getProducts - Get products for checkout by IDs",
+    "categories.getMany - List categories with subcategories",
+    "tags.getMany - List available tags",
+    "Collections: Users, Tenants, Products, Categories, Tags, Media"
+  ]
+}
