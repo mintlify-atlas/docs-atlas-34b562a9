@@ -1,0 +1,359 @@
+---
+title: 'Products'
+description: 'Product endpoints for retrieving individual products and product listings'
+---
+
+## getOne
+
+Retrieves a single product by ID with related data.
+
+### Method
+
+```typescript
+products.getOne.query(input)
+```
+
+### Parameters
+
+<ParamField name="id" type="string" required>
+  The product ID to retrieve
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="string">
+  Product ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Product name
+</ResponseField>
+
+<ResponseField name="price" type="string">
+  Product price
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Product description
+</ResponseField>
+
+<ResponseField name="image" type="Media | null">
+  Product image object (depth 2)
+  
+  <Expandable title="properties">
+    <ResponseField name="url" type="string">
+      Image URL
+    </ResponseField>
+    <ResponseField name="alt" type="string">
+      Alt text for the image
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="tenant" type="Tenant">
+  Tenant object with nested image (depth 2)
+  
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">
+      Tenant ID
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Tenant name
+    </ResponseField>
+    <ResponseField name="slug" type="string">
+      Tenant slug
+    </ResponseField>
+    <ResponseField name="image" type="Media | null">
+      Tenant image object
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="category" type="Category">
+  Product category
+</ResponseField>
+
+<ResponseField name="tags" type="array">
+  Product tags
+</ResponseField>
+
+### Code Example
+
+```typescript
+const product = await trpc.products.getOne.query({
+  id: "product_123"
+});
+
+console.log(product.name);
+console.log(product.tenant.name);
+console.log(product.image?.url);
+```
+
+### Implementation
+
+```typescript
+getOne: baseProcedure
+  .input(
+    z.object({
+      id: z.string(),
+    })
+  )
+  .query(async ({ ctx, input }) => {
+    const product = await ctx.db.findByID({
+      collection: "products",
+      id: input.id,
+      depth: 2, // Load the "product.image", "product.tenant", and "product.tenant.image"
+    });
+
+    return {
+      ...product,
+      image: product.image as Media | null,
+      tenant: product.tenant as Tenant & { image: Media | null },
+    };
+  })
+```
+
+---
+
+## getMany
+
+Retrieves a paginated list of products with advanced filtering and sorting.
+
+### Method
+
+```typescript
+products.getMany.query(input)
+```
+
+### Parameters
+
+<ParamField name="cursor" type="number" default="1">
+  Page number for pagination
+</ParamField>
+
+<ParamField name="limit" type="number" default="8">
+  Number of products per page (DEFAULT_LIMIT = 8)
+</ParamField>
+
+<ParamField name="category" type="string | null" optional>
+  Filter by category slug. Also includes products from subcategories.
+</ParamField>
+
+<ParamField name="minPrice" type="string | null" optional>
+  Minimum price filter
+</ParamField>
+
+<ParamField name="maxPrice" type="string | null" optional>
+  Maximum price filter
+</ParamField>
+
+<ParamField name="tags" type="string[] | null" optional>
+  Filter by tag names (array of strings)
+</ParamField>
+
+<ParamField name="sort" type="enum" optional>
+  Sort order for results
+  
+  **Possible values:**
+  - `"curated"` - Sort by creation date (descending)
+  - `"trending"` - Sort by creation date (descending)
+  - `"hot_and_new"` - Sort by creation date (ascending)
+</ParamField>
+
+<ParamField name="tenantSlug" type="string | null" optional>
+  Filter by tenant slug
+</ParamField>
+
+### Response
+
+<ResponseField name="docs" type="array">
+  Array of product objects
+  
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">
+      Product ID
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Product name
+    </ResponseField>
+    <ResponseField name="price" type="string">
+      Product price
+    </ResponseField>
+    <ResponseField name="image" type="Media | null">
+      Product image (depth 2)
+    </ResponseField>
+    <ResponseField name="tenant" type="Tenant">
+      Tenant with nested image (depth 2)
+    </ResponseField>
+    <ResponseField name="category" type="Category">
+      Product category
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="totalDocs" type="number">
+  Total number of products matching the filters
+</ResponseField>
+
+<ResponseField name="page" type="number">
+  Current page number
+</ResponseField>
+
+<ResponseField name="totalPages" type="number">
+  Total number of pages
+</ResponseField>
+
+<ResponseField name="hasNextPage" type="boolean">
+  Whether there are more pages available
+</ResponseField>
+
+<ResponseField name="hasPrevPage" type="boolean">
+  Whether there are previous pages
+</ResponseField>
+
+### Code Example
+
+```typescript
+// Basic query
+const products = await trpc.products.getMany.query({
+  cursor: 1,
+  limit: 12
+});
+
+// With filters
+const filteredProducts = await trpc.products.getMany.query({
+  cursor: 1,
+  limit: 20,
+  category: "electronics",
+  minPrice: "100",
+  maxPrice: "500",
+  tags: ["featured", "sale"],
+  sort: "hot_and_new",
+  tenantSlug: "tech-store"
+});
+
+console.log(filteredProducts.docs);
+console.log(`Page ${filteredProducts.page} of ${filteredProducts.totalPages}`);
+```
+
+### Implementation
+
+```typescript
+getMany: baseProcedure
+  .input(
+    z.object({
+      cursor: z.number().default(1),
+      limit: z.number().default(DEFAULT_LIMIT),
+      category: z.string().nullable().optional(),
+      minPrice: z.string().nullable().optional(),
+      maxPrice: z.string().nullable().optional(),
+      tags: z.array(z.string()).nullable().optional(),
+      sort: z.enum(sortValues).nullable().optional(),
+      tenantSlug: z.string().nullable().optional(),
+    })
+  )
+  .query(async ({ ctx, input }) => {
+    const where: Where = {};
+    let sort: Sort = "-createdAt";
+
+    if (input.sort === "curated") {
+      sort = "-createdAt";
+    }
+
+    if (input.sort === "hot_and_new") {
+      sort = "+createdAt";
+    }
+
+    if (input.sort === "trending") {
+      sort = "-createdAt";
+    }
+
+    if (input.minPrice && input.maxPrice) {
+      where.price = {
+        greater_than_equal: input.minPrice,
+        less_than_equal: input.maxPrice,
+      };
+    } else if (input.minPrice) {
+      where.price = {
+        greater_than_equal: input.minPrice,
+      };
+    } else if (input.maxPrice) {
+      where.price = {
+        less_than_equal: input.maxPrice,
+      };
+    }
+
+    if (input.tenantSlug) {
+      where["tenant.slug"] = {
+        equals: input.tenantSlug,
+      };
+    }
+
+    if (input.category) {
+      const categoriesData = await ctx.db.find({
+        collection: "categories",
+        limit: 1,
+        depth: 1,
+        pagination: false,
+        where: {
+          slug: {
+            equals: input.category,
+          },
+        },
+      });
+
+      const formattedData = categoriesData.docs.map((doc) => ({
+        ...doc,
+        subcategories: (doc.subcategories?.docs ?? []).map((doc) => ({
+          ...(doc as Category),
+          subcategories: undefined,
+        })),
+      }));
+
+      const subcategoriesSlugs = [];
+      const parentCategory = formattedData[0];
+
+      if (parentCategory) {
+        subcategoriesSlugs.push(
+          ...parentCategory.subcategories.map(
+            (subcategory) => subcategory.slug
+          )
+        );
+        where["category.slug"] = {
+          in: [parentCategory.slug, ...subcategoriesSlugs],
+        };
+      }
+    }
+
+    if (input.tags && input.tags.length > 0) {
+      where["tags.name"] = {
+        in: input.tags,
+      };
+    }
+
+    const data = await ctx.db.find({
+      collection: "products",
+      depth: 2, // Populate "category", "image" and "tenant & tenant.images"
+      where,
+      sort,
+      page: input.cursor,
+      limit: input.limit,
+    });
+
+    return {
+      ...data,
+      docs: data.docs.map((doc) => ({
+        ...doc,
+        image: doc.image as Media | null,
+        tenant: doc.tenant as Tenant & { image: Media | null },
+      })),
+    };
+  })
+```
+
+### Notes
+
+- When filtering by category, the endpoint automatically includes products from all subcategories
+- Price filters accept string values for precision
+- The `depth: 2` parameter ensures related entities (category, image, tenant, tenant.image) are fully populated
+- Sort options currently map to creation date sorting with different orders

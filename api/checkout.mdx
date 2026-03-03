@@ -1,0 +1,162 @@
+---
+title: 'Checkout'
+description: 'Checkout endpoints for cart and order processing'
+---
+
+## getProducts
+
+Retrieves multiple products by IDs and calculates total price for checkout.
+
+### Method
+
+```typescript
+checkout.getProducts.query(input)
+```
+
+### Parameters
+
+<ParamField name="ids" type="string[]" required>
+  Array of product IDs to retrieve for checkout
+</ParamField>
+
+### Response
+
+<ResponseField name="docs" type="array">
+  Array of product objects
+  
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">
+      Product ID
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Product name
+    </ResponseField>
+    <ResponseField name="price" type="string">
+      Product price
+    </ResponseField>
+    <ResponseField name="description" type="string">
+      Product description
+    </ResponseField>
+    <ResponseField name="image" type="Media | null">
+      Product image (depth 2)
+    </ResponseField>
+    <ResponseField name="tenant" type="Tenant">
+      Tenant object with nested image (depth 2)
+    </ResponseField>
+    <ResponseField name="category" type="Category">
+      Product category
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="totalPrice" type="number">
+  Sum of all product prices (calculated server-side)
+</ResponseField>
+
+<ResponseField name="totalDocs" type="number">
+  Number of products returned (should match input IDs length)
+</ResponseField>
+
+<ResponseField name="page" type="number">
+  Page number (always 1 for this endpoint)
+</ResponseField>
+
+<ResponseField name="totalPages" type="number">
+  Total pages (always 1 for this endpoint)
+</ResponseField>
+
+<ResponseField name="hasNextPage" type="boolean">
+  Whether there are more pages (always false)
+</ResponseField>
+
+<ResponseField name="hasPrevPage" type="boolean">
+  Whether there are previous pages (always false)
+</ResponseField>
+
+### Code Example
+
+```typescript
+try {
+  const checkout = await trpc.checkout.getProducts.query({
+    ids: ["product_1", "product_2", "product_3"]
+  });
+  
+  console.log(`Total: $${checkout.totalPrice}`);
+  console.log(`Items: ${checkout.docs.length}`);
+  
+  checkout.docs.forEach(product => {
+    console.log(`${product.name} - $${product.price}`);
+  });
+} catch (error) {
+  if (error.code === "NOT_FOUND") {
+    console.log("Some products were not found");
+  }
+}
+```
+
+### Implementation
+
+```typescript
+getProducts: baseProcedure
+  .input(
+    z.object({
+      ids: z.array(z.string()),
+    })
+  )
+  .query(async ({ ctx, input }) => {
+    const data = await ctx.db.find({
+      collection: "products",
+      depth: 2, // Populate "category", "image" and "tenant & tenant.images"
+      where: {
+        id: {
+          in: input.ids,
+        },
+      },
+    });
+
+    if (data.totalDocs !== input.ids.length) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Products not found",
+      });
+    }
+
+    const totalPrice = data.docs.reduce((acc, product) => {
+      const price = Number(product.price);
+      return acc + (isNaN(price) ? 0 : price);
+    }, 0);
+
+    return {
+      ...data,
+      totalPrice: totalPrice,
+      docs: data.docs.map((doc) => ({
+        ...doc,
+        image: doc.image as Media | null,
+        tenant: doc.tenant as Tenant & { image: Media | null },
+      })),
+    };
+  })
+```
+
+### Error Handling
+
+<ResponseField name="NOT_FOUND" type="error">
+  Thrown when any of the requested product IDs don't exist
+  
+  ```json
+  {
+    "code": "NOT_FOUND",
+    "message": "Products not found"
+  }
+  ```
+  
+  This error is thrown if `data.totalDocs !== input.ids.length`, ensuring all requested products exist.
+</ResponseField>
+
+### Notes
+
+- This endpoint validates that ALL requested products exist before returning
+- The `totalPrice` is calculated server-side for security and consistency
+- Invalid or non-numeric prices are treated as 0 in the calculation
+- The `depth: 2` parameter ensures all related data (images, tenant info) is fully populated
+- Useful for cart validation and checkout page rendering

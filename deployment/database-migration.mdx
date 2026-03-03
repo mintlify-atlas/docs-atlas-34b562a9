@@ -1,0 +1,481 @@
+---
+title: Database Migration
+description: Database setup, migrations, and seeding for the multi-vendor marketplace platform
+---
+
+This guide covers database setup, migrations, and data management for your multi-vendor marketplace.
+
+## Database Overview
+
+The application uses:
+- **Database:** MongoDB (via Mongoose adapter)
+- **ORM:** Payload CMS with Mongoose
+- **Connection:** `@payloadcms/db-mongodb` adapter
+
+**Configuration location:** `src/payload.config.ts:35-37`
+
+## Initial Database Setup
+
+### MongoDB Installation
+
+#### Local Development
+
+**macOS:**
+```bash
+brew tap mongodb/brew
+brew install mongodb-community
+brew services start mongodb-community
+```
+
+**Ubuntu/Debian:**
+```bash
+wget -qO - https://www.mongodb.org/static/pgp/server-7.0.asc | sudo apt-key add -
+echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+sudo apt update
+sudo apt install -y mongodb-org
+sudo systemctl start mongod
+```
+
+**Docker:**
+```bash
+docker run -d \
+  --name mongodb \
+  -p 27017:27017 \
+  -e MONGO_INITDB_ROOT_USERNAME=admin \
+  -e MONGO_INITDB_ROOT_PASSWORD=password \
+  -v mongodb_data:/data/db \
+  mongo:7.0
+```
+
+#### Production - MongoDB Atlas
+
+For production, MongoDB Atlas is recommended:
+
+1. Create account at [mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas)
+2. Create a new cluster
+3. Configure network access (IP whitelist)
+4. Create database user
+5. Get connection string
+
+**Connection string format:**
+```
+mongodb+srv://<username>:<password>@<cluster>.mongodb.net/<database>?retryWrites=true&w=majority
+```
+
+### Environment Configuration
+
+Set the `DATABASE_URI` environment variable:
+
+```env
+# Local development
+DATABASE_URI=mongodb://localhost:27017/marketplace
+
+# MongoDB Atlas
+DATABASE_URI=mongodb+srv://user:pass@cluster.mongodb.net/marketplace?retryWrites=true&w=majority
+```
+
+<Warning>
+  Never commit database credentials to version control. Always use environment variables.
+</Warning>
+
+## Database Collections
+
+The application defines the following collections:
+
+**Defined in:** `src/payload.config.ts:29`
+
+| Collection | File | Purpose |
+|------------|------|----------|
+| `users` | `src/collections/Users.ts` | User accounts and authentication |
+| `media` | `src/collections/Media.ts` | Uploaded files and images |
+| `categories` | `src/collections/Categories.ts` | Product categories (hierarchical) |
+| `products` | `src/collections/Products.ts` | Marketplace products |
+| `tags` | `src/collections/Tags.ts` | Product tags |
+| `tenants` | `src/collections/Tenants.ts` | Multi-tenant vendor accounts |
+
+### Users Collection
+
+**Key features:**
+- Built-in authentication (`auth: true`)
+- Username field (required, unique)
+- Role-based access control
+- Multi-tenant support
+
+**Available roles:**
+- `super-admin` - Full system access
+- `user` - Regular user access
+
+**Defined in:** `src/collections/Users.ts:20-51`
+
+### Multi-Tenant Architecture
+
+The platform uses Payload's multi-tenant plugin:
+
+**Configuration:** `src/payload.config.ts:41-50`
+
+- Products are tenant-scoped
+- Super-admins have access to all tenants
+- Regular users are restricted to their tenants
+
+## Database Scripts
+
+The following npm scripts are available for database management:
+
+### Generate Types
+
+```bash
+npm run generate:types
+```
+
+**What it does:**
+- Runs `payload generate:types`
+- Generates TypeScript types from collections
+- Creates `src/payload-types.ts`
+
+**When to run:**
+- After modifying collection schemas
+- Before building the application
+- During initial setup
+
+### Fresh Migration
+
+```bash
+npm run db:fresh
+```
+
+**What it does:**
+- Runs `payload migrate:fresh`
+- Drops all existing data
+- Recreates all collections
+- Applies all migrations
+
+<Warning>
+  This command DESTROYS all data in the database. Only use during initial setup or local development. NEVER run this in production.
+</Warning>
+
+**Use cases:**
+- Initial database setup
+- Local development reset
+- Testing with clean slate
+
+### Seed Database
+
+```bash
+npm run db:seed
+```
+
+**What it does:**
+- Runs `payload run src/seed.ts`
+- Creates initial data
+- Seeds categories and subcategories
+- Creates default admin user
+
+**Defined in:** `src/seed.ts`
+
+## Seeding Data
+
+The seed script creates:
+
+### 1. Admin User
+
+**Default credentials:**
+```javascript
+{
+  email: "ankit@admin.com",
+  password: "Ankit@46",
+  roles: ["super-admin"],
+  username: "admin"
+}
+```
+
+**Code location:** `src/seed.ts:144-152`
+
+<Warning>
+  Change the default admin password immediately after first deployment. This is a security risk if left unchanged.
+</Warning>
+
+### 2. Categories
+
+The seed script creates 11 main categories with subcategories:
+
+1. **All** - Default category
+2. **Business & Money** - 9 subcategories (Accounting, Entrepreneurship, etc.)
+3. **Software Development** - 5 subcategories (Web Dev, Mobile Dev, etc.)
+4. **Writing & Publishing** - 5 subcategories
+5. **Education** - 4 subcategories
+6. **Self Improvement** - 4 subcategories
+7. **Fitness & Health** - 4 subcategories
+8. **Design** - 4 subcategories (UI/UX, Graphic Design, etc.)
+9. **Drawing & Painting** - 5 subcategories
+10. **Music** - 4 subcategories
+11. **Photography** - 5 subcategories
+
+**Code location:** `src/seed.ts:4-138`
+
+### Custom Seeding
+
+Modify `src/seed.ts` to add your own seed data:
+
+```typescript
+import { getPayload } from "payload";
+import config from "@payload-config";
+
+const seed = async () => {
+  const payload = await getPayload({ config });
+
+  // Create custom data
+  await payload.create({
+    collection: "products",
+    data: {
+      name: "Sample Product",
+      // ... other fields
+    },
+  });
+};
+
+try {
+  await seed();
+  console.log("Seeding completed successfully");
+  process.exit(0);
+} catch (error) {
+  console.error("Error during seeding:", error);
+  process.exit(1);
+}
+```
+
+## Deployment Workflow
+
+### Initial Production Setup
+
+1. **Setup MongoDB database**
+
+```bash
+# Atlas: Create cluster and get connection string
+# Or setup self-hosted MongoDB
+```
+
+2. **Configure environment**
+
+```bash
+export DATABASE_URI="mongodb+srv://..."
+export PAYLOAD_SECRET="your-secret"
+```
+
+3. **Run fresh migration**
+
+```bash
+npm run db:fresh
+```
+
+<Warning>
+  Only run db:fresh on initial setup. This drops all data.
+</Warning>
+
+4. **Seed initial data**
+
+```bash
+npm run db:seed
+```
+
+5. **Verify database**
+
+```bash
+# Connect to MongoDB and verify collections
+mongosh "$DATABASE_URI"
+> show collections
+> db.users.find()
+> db.categories.count()
+```
+
+### Updating Production Database
+
+For schema changes after initial deployment:
+
+1. **Backup database first**
+
+```bash
+# MongoDB Atlas: Use Atlas backup feature
+# Self-hosted:
+mongodump --uri="$DATABASE_URI" --out=./backup
+```
+
+2. **Update collection schemas**
+
+Modify collection files in `src/collections/`
+
+3. **Generate new types**
+
+```bash
+npm run generate:types
+```
+
+4. **Deploy changes**
+
+```bash
+npm run build
+npm run start
+```
+
+<Warning>
+  Payload CMS handles schema migrations automatically. However, complex changes may require manual data migration scripts.
+</Warning>
+
+## Database Management
+
+### Backups
+
+#### MongoDB Atlas (Recommended)
+
+- Automated backups enabled by default
+- Point-in-time recovery available
+- Configure backup schedule in Atlas dashboard
+
+#### Self-Hosted Backups
+
+```bash
+# Full backup
+mongodump --uri="$DATABASE_URI" --out=./backup-$(date +%Y%m%d)
+
+# Backup specific database
+mongodump --uri="$DATABASE_URI" --db=marketplace --out=./backup
+
+# Restore from backup
+mongorestore --uri="$DATABASE_URI" ./backup
+```
+
+**Automated backup script:**
+
+```bash
+#!/bin/bash
+# backup.sh
+BACKUP_DIR="/var/backups/mongodb"
+DATE=$(date +%Y%m%d_%H%M%S)
+
+mkdir -p "$BACKUP_DIR"
+mongodump --uri="$DATABASE_URI" --out="$BACKUP_DIR/backup_$DATE"
+
+# Keep only last 7 days
+find "$BACKUP_DIR" -type d -mtime +7 -exec rm -rf {} +
+```
+
+**Add to crontab:**
+```bash
+# Backup daily at 2 AM
+0 2 * * * /path/to/backup.sh
+```
+
+### Monitoring
+
+#### MongoDB Atlas
+
+- Built-in monitoring dashboard
+- Performance metrics
+- Slow query analysis
+- Alert configuration
+
+#### Self-Hosted Monitoring
+
+**Enable profiling:**
+```javascript
+// In MongoDB shell
+db.setProfilingLevel(1, { slowms: 100 })
+
+// View slow queries
+db.system.profile.find().sort({ ts: -1 }).limit(5)
+```
+
+**Monitor with mongostat:**
+```bash
+mongostat --uri="$DATABASE_URI"
+```
+
+### Indexing
+
+Payload CMS creates indexes automatically, but you can add custom indexes:
+
+```typescript
+// In collection config
+export const Products: CollectionConfig = {
+  slug: "products",
+  fields: [
+    {
+      name: "sku",
+      type: "text",
+      index: true,  // Creates index
+      unique: true  // Creates unique index
+    }
+  ]
+}
+```
+
+**Manual index creation:**
+```javascript
+// In MongoDB shell
+db.products.createIndex({ name: "text" })
+db.products.createIndex({ createdAt: -1 })
+db.products.createIndex({ "tenant": 1, "status": 1 })
+```
+
+## Troubleshooting
+
+### Connection Issues
+
+**Error: "MongooseError: Operation timeout"**
+
+Solutions:
+- Verify DATABASE_URI is correct
+- Check network connectivity
+- Verify MongoDB is running
+- Check firewall/security group settings
+- Whitelist IP in MongoDB Atlas
+
+**Error: "Authentication failed"**
+
+Solutions:
+- Verify username and password
+- Check database user has correct permissions
+- Ensure `authSource` is correct in connection string
+
+### Migration Issues
+
+**Error during db:fresh**
+
+Solutions:
+- Ensure MongoDB is accessible
+- Verify PAYLOAD_SECRET is set
+- Check collection configurations are valid
+- Review error logs for specific issues
+
+### Seed Issues
+
+**Error: "Duplicate key error"**
+
+Solution: Database already contains data. Run `db:fresh` first or modify seed script to handle existing data.
+
+**Error during seed script**
+
+Solutions:
+- Check seed data format matches collection schema
+- Verify required fields are included
+- Review `src/seed.ts` for errors
+
+## Best Practices
+
+1. **Always backup before migrations** - Especially in production
+2. **Test migrations in staging first** - Never test directly in production
+3. **Use transactions for critical operations** - Ensure data consistency
+4. **Monitor database performance** - Set up alerts for slow queries
+5. **Regular index maintenance** - Remove unused indexes, add needed ones
+6. **Keep connection pool size appropriate** - Don't overload database
+7. **Use read replicas for scaling** - Distribute read load
+8. **Enable authentication** - Never run MongoDB without auth in production
+9. **Encrypt connections** - Always use SSL/TLS
+10. **Regular security updates** - Keep MongoDB version current
+
+## Next Steps
+
+- [Environment Variables](/deployment/environment-variables) - Configure database connection
+- [Production Setup](/deployment/production-setup) - Deploy your application
+- Setup automated backups
+- Configure monitoring and alerts
+- Plan scaling strategy

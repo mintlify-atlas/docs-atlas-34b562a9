@@ -1,0 +1,116 @@
+---
+title: Categories Collection
+description: Hierarchical product categorization system
+---
+
+## Overview
+
+The Categories collection provides a hierarchical taxonomy for organizing products. Categories can have parent-child relationships to create nested category structures.
+
+## Collection Configuration
+
+- **Slug**: `categories`
+- **Admin Title Field**: `name`
+
+## Fields
+
+<ParamField path="name" type="text" required>
+  The category display name.
+</ParamField>
+
+<ParamField path="slug" type="text" required>
+  URL-friendly identifier for the category.
+  
+  - **Unique**: Yes
+  - **Indexed**: Yes
+</ParamField>
+
+<ParamField path="color" type="text">
+  Optional color code for category theming or UI display.
+</ParamField>
+
+<ParamField path="parent" type="relationship">
+  The parent category in the hierarchy.
+  
+  - **Relation**: `categories` collection (self-reference)
+  - **Multiple**: No (single parent)
+</ParamField>
+
+<ParamField path="subcategories" type="join">
+  Virtual field showing all child categories.
+  
+  - **Collection**: `categories`
+  - **Join On**: `parent` field
+  - **Multiple**: Yes (many children)
+</ParamField>
+
+## Relationships
+
+- **parent**: Self-referencing relationship for hierarchical structure
+- **subcategories**: Join field that automatically populates child categories
+- **Referenced by**: Products collection (via category field)
+
+## Access Control
+
+No explicit access control defined in the schema. Uses Payload's default access patterns.
+
+## Hierarchical Structure
+
+Categories support unlimited nesting levels:
+
+- A category can have one parent (or none for root categories)
+- The `subcategories` join field automatically shows all children
+- The `parent` field creates the hierarchical relationship
+
+## Source Schema
+
+```typescript
+import type { CollectionConfig } from "payload";
+
+export const Categories: CollectionConfig = {
+  slug: "categories",
+  admin: {
+    useAsTitle: "name",
+  },
+  fields: [
+    {
+      name: "name",
+      type: "text",
+      required: true,
+    },
+    {
+      name: "slug",
+      type: "text",
+      required: true,
+      unique: true,
+      index: true,
+    },
+    {
+      name: "color",
+      type: "text",
+    },
+    {
+      name: "parent",
+      type: "relationship",
+      relationTo: "categories",
+      hasMany: false,
+    },
+    {
+      name: "subcategories",
+      type: "join",
+      collection: "categories",
+      on: "parent",
+      hasMany: true,
+    },
+  ],
+};
+```
+
+## Key Features
+
+- **Hierarchical**: Unlimited nesting with parent-child relationships
+- **Self-referencing**: Categories can reference other categories
+- **Join Fields**: Automatic subcategory population
+- **Unique Slugs**: URL-safe identifiers for routing
+- **Color Coding**: Optional visual categorization
+- **Indexed**: Fast lookups by slug

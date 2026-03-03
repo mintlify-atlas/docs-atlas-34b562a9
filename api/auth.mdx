@@ -1,0 +1,289 @@
+---
+title: 'Authentication'
+description: 'Authentication endpoints for user registration, login, and session management'
+---
+
+## session
+
+Retrieves the current user session.
+
+### Method
+
+```typescript
+auth.session.query()
+```
+
+### Parameters
+
+No input parameters required.
+
+### Response
+
+<ResponseField name="user" type="object">
+  The authenticated user object
+  
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">
+      User ID
+    </ResponseField>
+    <ResponseField name="email" type="string">
+      User email address
+    </ResponseField>
+    <ResponseField name="username" type="string">
+      User username
+    </ResponseField>
+    <ResponseField name="tenants" type="array">
+      Array of tenant associations
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Code Example
+
+```typescript
+const session = await trpc.auth.session.query();
+```
+
+### Implementation
+
+```typescript
+session: baseProcedure.query(async ({ ctx }) => {
+  const headers = await getHeaders();
+  const session = await ctx.db.auth({ headers });
+  return session;
+})
+```
+
+---
+
+## register
+
+Registers a new user and creates an associated tenant.
+
+### Method
+
+```typescript
+auth.register.mutate(input)
+```
+
+### Parameters
+
+<ParamField name="email" type="string" required>
+  User email address (must be valid email format)
+</ParamField>
+
+<ParamField name="username" type="string" required>
+  Username for the new account
+  
+  **Validation rules:**
+  - Minimum 3 characters
+  - Maximum 63 characters
+  - Only lowercase letters, numbers, and hyphens allowed
+  - Must start and end with a letter or number
+  - Cannot contain consecutive hyphens
+</ParamField>
+
+<ParamField name="password" type="string" required>
+  User password
+  
+  **Validation rules:**
+  - Minimum 8 characters
+  - Maximum 32 characters
+  - Must contain at least one lowercase letter
+  - Must contain at least one uppercase letter
+  - Must contain at least one number
+  - Must contain at least one special character
+</ParamField>
+
+### Response
+
+Returns void on success. Sets authentication cookie automatically.
+
+### Code Example
+
+```typescript
+await trpc.auth.register.mutate({
+  email: "user@example.com",
+  username: "john-doe",
+  password: "SecurePass123!"
+});
+```
+
+### Implementation
+
+```typescript
+register: baseProcedure
+  .input(registerSchema)
+  .mutation(async ({ input, ctx }) => {
+    const existingData = await ctx.db.find({
+      collection: "users",
+      limit: 1,
+      where: {
+        username: {
+          equals: input.username,
+        },
+      },
+    });
+
+    const existingUser = existingData.docs[0];
+
+    if (existingUser) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Username already taken",
+      });
+    }
+
+    const tenant = await ctx.db.create({
+      collection: "tenants",
+      data: {
+        name: input.username,
+        slug: input.username,
+        stripeAccountId: "test",
+      },
+    });
+
+    await ctx.db.create({
+      collection: "users",
+      data: {
+        email: input.email,
+        username: input.username,
+        password: input.password, // This will be hashed
+        tenants: [
+          {
+            tenant: tenant.id,
+          },
+        ],
+      },
+    });
+
+    const data = await ctx.db.login({
+      collection: "users",
+      data: {
+        email: input.email,
+        password: input.password,
+      },
+    });
+
+    if (!data.token) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "Failed to login",
+      });
+    }
+
+    await generateAuthCookie({
+      prefix: ctx.db.config.cookiePrefix,
+      value: data.token,
+    });
+  })
+```
+
+### Error Handling
+
+<ResponseField name="BAD_REQUEST" type="error">
+  Thrown when username is already taken
+  
+  ```json
+  {
+    "code": "BAD_REQUEST",
+    "message": "Username already taken"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="UNAUTHORIZED" type="error">
+  Thrown when automatic login after registration fails
+  
+  ```json
+  {
+    "code": "UNAUTHORIZED",
+    "message": "Failed to login"
+  }
+  ```
+</ResponseField>
+
+---
+
+## login
+
+Authenticates a user with email and password.
+
+### Method
+
+```typescript
+auth.login.mutate(input)
+```
+
+### Parameters
+
+<ParamField name="email" type="string" required>
+  User email address (must be valid email format)
+</ParamField>
+
+<ParamField name="password" type="string" required>
+  User password
+</ParamField>
+
+### Response
+
+<ResponseField name="token" type="string">
+  Authentication token
+</ResponseField>
+
+<ResponseField name="user" type="object">
+  Authenticated user object
+</ResponseField>
+
+### Code Example
+
+```typescript
+const data = await trpc.auth.login.mutate({
+  email: "user@example.com",
+  password: "SecurePass123!"
+});
+
+console.log(data.token); // JWT token
+console.log(data.user); // User object
+```
+
+### Implementation
+
+```typescript
+login: baseProcedure.input(loginSchema).mutation(async ({ input, ctx }) => {
+  const data = await ctx.db.login({
+    collection: "users",
+    data: {
+      email: input.email,
+      password: input.password,
+    },
+  });
+
+  if (!data.token) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Failed to login",
+    });
+  }
+
+  await generateAuthCookie({
+    prefix: ctx.db.config.cookiePrefix,
+    value: data.token,
+  });
+
+  return data;
+})
+```
+
+### Error Handling
+
+<ResponseField name="UNAUTHORIZED" type="error">
+  Thrown when credentials are invalid or login fails
+  
+  ```json
+  {
+    "code": "UNAUTHORIZED",
+    "message": "Failed to login"
+  }
+  ```
+</ResponseField>

@@ -1,0 +1,620 @@
+---
+title: Database Schema
+description: Database collections, relationships, and data models in the marketplace platform
+---
+
+The platform uses **MongoDB** via Payload CMS with six core collections. Understanding the relationships between these collections is crucial for effective development.
+
+## Collections Overview
+
+<CardGroup cols={3}>
+  <Card title="Users" icon="user">
+    Authentication and user management
+  </Card>
+  <Card title="Tenants" icon="store">
+    Vendor stores (multi-tenant)
+  </Card>
+  <Card title="Products" icon="box">
+    Product catalog
+  </Card>
+  <Card title="Categories" icon="folder">
+    Hierarchical categorization
+  </Card>
+  <Card title="Tags" icon="tag">
+    Product tagging system
+  </Card>
+  <Card title="Media" icon="image">
+    File uploads and images
+  </Card>
+</CardGroup>
+
+## Entity Relationship Diagram
+
+```
+┌──────────┐         ┌──────────┐         ┌──────────┐
+│  Users   │◄────────┤ Tenants  │────────►│  Media   │
+│          │         │          │         │          │
+│ • email  │         │ • name   │         │ • alt    │
+│ • roles  │         │ • slug   │         │ • file   │
+└──────────┘         │ • stripe │         └──────────┘
+      │              └────┬─────┘               ▲
+      │                   │                     │
+      │              ┌────▼──────┐             │
+      │              │ Products  │─────────────┘
+      │              │           │
+      │              │ • name    │
+      │              │ • price   │◄────┐
+      │              │ • refund  │     │
+      │              └─────┬─────┘     │
+      │                    │           │
+      │                    │           │
+      │              ┌─────▼──────┐   │
+      │              │Categories  │   │
+      │              │            │   │
+      │              │ • name     │   │
+      └──────────────┤ • parent   │   │
+                     │ • subcats  │   │
+                     └────────────┘   │
+                                      │
+                     ┌────────────┐   │
+                     │   Tags     │───┘
+                     │            │
+                     │ • name     │
+                     └────────────┘
+```
+
+## Collection Schemas
+
+### Users Collection
+
+**Location**: `src/collections/Users.ts`
+
+```typescript
+{
+  slug: "users",
+  auth: true,  // Enables authentication
+  fields: [
+    {
+      name: "username",
+      type: "text",
+      required: true,
+      unique: true,
+    },
+    {
+      name: "email",           // Auto-added by auth
+      type: "email",
+      required: true,
+      unique: true,
+    },
+    {
+      name: "password",        // Auto-added by auth
+      type: "text",
+      required: true,
+    },
+    {
+      name: "roles",
+      type: "select",
+      hasMany: true,
+      options: ["super-admin", "user"],
+      defaultValue: ["user"],
+    },
+    {
+      name: "tenants",         // Multi-tenant plugin field
+      type: "array",
+    },
+  ]
+}
+```
+
+**Key Fields**:
+- `username` - Unique username for each user
+- `email` - Login email (auto-indexed, unique)
+- `roles` - User permissions (super-admin has access to all tenants)
+- `tenants` - Array of tenant associations (multi-tenant plugin)
+
+### Tenants Collection
+
+**Location**: `src/collections/Tenants.ts`
+
+```typescript
+{
+  slug: "tenants",
+  fields: [
+    {
+      name: "name",
+      type: "text",
+      required: true,
+      label: "Store Name",
+    },
+    {
+      name: "slug",
+      type: "text",
+      required: true,
+      unique: true,
+      index: true,
+    },
+    {
+      name: "image",
+      type: "upload",
+      relationTo: "media",
+    },
+    {
+      name: "stripeAccountId",
+      type: "text",
+      required: true,
+    },
+    {
+      name: "stripeDetailsSubmitted",
+      type: "checkbox",
+    },
+  ]
+}
+```
+
+**Key Fields**:
+- `name` - Display name of the vendor store
+- `slug` - URL-friendly identifier (indexed for fast lookups)
+- `image` - Store logo/avatar (relationship to Media)
+- `stripeAccountId` - Connected Stripe account
+- `stripeDetailsSubmitted` - Payment setup status
+
+### Products Collection
+
+**Location**: `src/collections/Products.ts`
+
+```typescript
+{
+  slug: "products",
+  fields: [
+    {
+      name: "name",
+      type: "text",
+      required: true,
+    },
+    {
+      name: "description",
+      type: "text",
+    },
+    {
+      name: "price",
+      type: "number",
+      required: true,
+    },
+    {
+      name: "category",
+      type: "relationship",
+      relationTo: "categories",
+      hasMany: false,
+    },
+    {
+      name: "tags",
+      type: "relationship",
+      relationTo: "tags",
+      hasMany: true,
+    },
+    {
+      name: "image",
+      type: "upload",
+      relationTo: "media",
+    },
+    {
+      name: "refundPolicy",
+      type: "select",
+      options: ["30-day", "14-day", "7-day", "3-day", "1-day", "no-refunds"],
+      defaultValue: "30-day",
+    },
+    {
+      name: "tenant",          // Auto-added by multi-tenant plugin
+      type: "relationship",
+      relationTo: "tenants",
+    },
+  ]
+}
+```
+
+**Key Fields**:
+- `name` - Product title
+- `description` - Product description
+- `price` - Price in INR (stored as number)
+- `category` - Single category assignment
+- `tags` - Multiple tag assignments
+- `image` - Product image (relationship to Media)
+- `refundPolicy` - Return/refund terms
+- `tenant` - Owner store (auto-added by multi-tenant plugin)
+
+### Categories Collection
+
+**Location**: `src/collections/Categories.ts`
+
+```typescript
+{
+  slug: "categories",
+  fields: [
+    {
+      name: "name",
+      type: "text",
+      required: true,
+    },
+    {
+      name: "slug",
+      type: "text",
+      required: true,
+      unique: true,
+      index: true,
+    },
+    {
+      name: "color",
+      type: "text",
+    },
+    {
+      name: "parent",
+      type: "relationship",
+      relationTo: "categories",
+      hasMany: false,
+    },
+    {
+      name: "subcategories",
+      type: "join",
+      collection: "categories",
+      on: "parent",
+      hasMany: true,
+    },
+  ]
+}
+```
+
+**Key Fields**:
+- `name` - Category display name
+- `slug` - URL-friendly identifier (indexed)
+- `color` - UI color coding
+- `parent` - Parent category (self-referential)
+- `subcategories` - Virtual field showing child categories (join field)
+
+**Hierarchical Structure**:
+```
+Electronics (parent: null)
+├── Laptops (parent: Electronics)
+├── Phones (parent: Electronics)
+└── Tablets (parent: Electronics)
+```
+
+### Tags Collection
+
+**Location**: `src/collections/Tags.ts`
+
+```typescript
+{
+  slug: "tags",
+  fields: [
+    {
+      name: "name",
+      type: "text",
+      required: true,
+      unique: true,
+    },
+    {
+      name: "products",
+      type: "relationship",
+      relationTo: "products",
+      hasMany: true,
+    },
+  ]
+}
+```
+
+**Key Fields**:
+- `name` - Unique tag name
+- `products` - Products with this tag (many-to-many relationship)
+
+### Media Collection
+
+**Location**: `src/collections/Media.ts`
+
+```typescript
+{
+  slug: "media",
+  upload: true,  // Enables file uploads
+  access: {
+    read: () => true,  // Public read access
+  },
+  fields: [
+    {
+      name: "alt",
+      type: "text",
+      required: true,
+    },
+    // File metadata auto-added by Payload:
+    // - filename
+    // - mimeType
+    // - filesize
+    // - width, height (for images)
+    // - url
+  ]
+}
+```
+
+**Auto-Generated Fields**:
+- `filename` - Original filename
+- `mimeType` - File MIME type
+- `filesize` - Size in bytes
+- `width` / `height` - Image dimensions
+- `url` - Public URL to access file
+
+## Relationships
+
+### One-to-Many
+
+**Tenant → Products**
+```typescript
+// One tenant has many products
+const tenant = await payload.findByID({
+  collection: "tenants",
+  id: tenantId,
+});
+
+const products = await payload.find({
+  collection: "products",
+  where: {
+    tenant: { equals: tenantId },
+  },
+});
+```
+
+**Category → Products**
+```typescript
+// One category has many products
+const products = await payload.find({
+  collection: "products",
+  where: {
+    category: { equals: categoryId },
+  },
+});
+```
+
+### Many-to-Many
+
+**Products ↔ Tags**
+```typescript
+// Products can have multiple tags
+const product = {
+  name: "iPhone",
+  tags: ["smartphone", "premium", "5g"],
+};
+
+// Query products by tag
+const products = await payload.find({
+  collection: "products",
+  where: {
+    "tags.name": { in: ["smartphone", "premium"] },
+  },
+});
+```
+
+### Self-Referential
+
+**Categories (Hierarchical)**
+```typescript
+// Parent categories
+const parentCategories = await payload.find({
+  collection: "categories",
+  where: {
+    parent: { exists: false },
+  },
+  depth: 1,  // Populates subcategories
+});
+
+// Access subcategories via join field
+parentCategories.docs.forEach((category) => {
+  console.log(category.subcategories?.docs);
+});
+```
+
+## Query Examples
+
+### Basic Queries
+
+<CodeGroup>
+```typescript Find by ID
+const product = await payload.findByID({
+  collection: "products",
+  id: productId,
+  depth: 2,  // Populate category, tags, image, tenant
+});
+```
+
+```typescript Find Many
+const products = await payload.find({
+  collection: "products",
+  where: {
+    price: { greater_than: 1000 },
+  },
+  limit: 20,
+  page: 1,
+});
+```
+
+```typescript Count
+const count = await payload.count({
+  collection: "products",
+  where: {
+    "tenant.slug": { equals: "awesome-store" },
+  },
+});
+```
+</CodeGroup>
+
+### Advanced Queries
+
+<CodeGroup>
+```typescript Nested Filtering
+// Products in specific category with price range
+const products = await payload.find({
+  collection: "products",
+  where: {
+    and: [
+      {
+        "category.slug": { equals: "electronics" },
+      },
+      {
+        price: {
+          greater_than_equal: 500,
+          less_than_equal: 2000,
+        },
+      },
+    ],
+  },
+});
+```
+
+```typescript Multiple Relationships
+// Products with populated relationships
+const products = await payload.find({
+  collection: "products",
+  depth: 2,
+  where: {
+    "tags.name": { in: ["featured", "trending"] },
+  },
+});
+
+// Access populated data
+products.docs.forEach((product) => {
+  console.log(product.category.name);
+  console.log(product.tenant.name);
+  console.log(product.image?.url);
+});
+```
+
+```typescript Search
+// Text search across fields
+const results = await payload.find({
+  collection: "products",
+  where: {
+    or: [
+      { name: { like: "iPhone" } },
+      { description: { like: "iPhone" } },
+    ],
+  },
+});
+```
+</CodeGroup>
+
+## Indexes
+
+Indexed fields for optimized queries:
+
+| Collection | Field | Type |
+|------------|-------|------|
+| Users | email | unique |
+| Users | username | unique |
+| Tenants | slug | unique |
+| Categories | slug | unique |
+| Tags | name | unique |
+| Products | tenant | reference |
+
+## Multi-Tenancy
+
+Products are automatically scoped to tenants via the multi-tenant plugin:
+
+```typescript
+// Super-admin: sees all products
+const allProducts = await payload.find({
+  collection: "products",
+});
+
+// Regular user: only sees products from their tenants
+const myProducts = await payload.find({
+  collection: "products",
+  // Automatically filtered by user's tenant access
+});
+
+// Explicitly filter by tenant
+const storeProducts = await payload.find({
+  collection: "products",
+  where: {
+    "tenant.slug": { equals: "my-store" },
+  },
+});
+```
+
+## Data Validation
+
+### Required Fields
+
+```typescript
+// These fields must be provided
+const product = {
+  name: "Required",           // ✓
+  price: 999,                // ✓
+  description: "Optional",   // Optional
+  category: categoryId,      // Optional
+};
+```
+
+### Unique Constraints
+
+```typescript
+// These must be unique across the collection
+- users.email
+- users.username
+- tenants.slug
+- categories.slug
+- tags.name
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Depth Management">
+    Use `depth` parameter wisely to balance data completeness and performance:
+    
+    ```typescript
+    // depth: 0 - Only IDs
+    { category: "507f1f77bcf86cd799439011" }
+    
+    // depth: 1 - Direct relationships
+    { category: { id: "...", name: "Electronics" } }
+    
+    // depth: 2 - Nested relationships
+    { category: { parent: { name: "All" } } }
+    ```
+  </Accordion>
+  
+  <Accordion title="Pagination">
+    Always paginate large result sets:
+    
+    ```typescript
+    await payload.find({
+      collection: "products",
+      page: 1,
+      limit: 20,  // Don't fetch everything
+    });
+    ```
+  </Accordion>
+  
+  <Accordion title="Indexing">
+    - Index fields used in `where` clauses
+    - Keep unique constraints for data integrity
+    - Query by indexed fields for better performance
+  </Accordion>
+  
+  <Accordion title="Type Safety">
+    Use generated Payload types:
+    
+    ```typescript
+    import { Product, Category, Tenant } from "@/payload-types";
+    
+    const product: Product = await payload.findByID({...});
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Payload CMS" icon="database" href="/development/payload-cms">
+    Learn about collection configuration
+  </Card>
+  <Card title="tRPC API" icon="code" href="/development/trpc-api">
+    Query data via type-safe APIs
+  </Card>
+</CardGroup>

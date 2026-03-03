@@ -1,0 +1,132 @@
+---
+title: Products Collection
+description: Product catalog with pricing, categorization, and media
+---
+
+## Overview
+
+The Products collection manages the product catalog for the marketplace, including pricing, categorization, tagging, and refund policies.
+
+## Collection Configuration
+
+- **Slug**: `products`
+
+## Fields
+
+<ParamField path="name" type="text" required>
+  The product name or title.
+</ParamField>
+
+<ParamField path="description" type="text">
+  Detailed description of the product.
+</ParamField>
+
+<ParamField path="price" type="number" required>
+  Product price in Indian Rupees (INR).
+  
+  - **Currency**: INR
+</ParamField>
+
+<ParamField path="category" type="relationship">
+  The primary category for this product.
+  
+  - **Relation**: `categories` collection
+  - **Multiple**: No (single category)
+</ParamField>
+
+<ParamField path="tags" type="relationship">
+  Tags associated with the product for filtering and search.
+  
+  - **Relation**: `tags` collection
+  - **Multiple**: Yes (many tags)
+</ParamField>
+
+<ParamField path="image" type="upload">
+  Primary product image.
+  
+  - **Relation**: `media` collection
+</ParamField>
+
+<ParamField path="refundPolicy" type="select">
+  The refund policy period for this product.
+  
+  - **Default**: `"30-day"`
+  - **Options**:
+    - `30-day` - 30-day refund window
+    - `14-day` - 14-day refund window
+    - `7-day` - 7-day refund window
+    - `3-day` - 3-day refund window
+    - `1-day` - 1-day refund window
+    - `no-refunds` - No refunds accepted
+</ParamField>
+
+## Relationships
+
+- **category**: Many-to-one relationship with `categories` collection
+- **tags**: Many-to-many relationship with `tags` collection
+- **image**: One-to-one relationship with `media` collection
+
+## Access Control
+
+No explicit access control defined in the schema. Likely uses multi-tenant plugin access patterns to scope products to tenants.
+
+## Source Schema
+
+```typescript
+import type { CollectionConfig } from "payload";
+
+export const Products: CollectionConfig = {
+  slug: "products",
+  fields: [
+    {
+      name: "name",
+      type: "text",
+      required: true,
+    },
+    {
+      name: "description",
+      type: "text",
+    },
+    {
+      name: "price",
+      type: "number",
+      required: true,
+      admin: {
+        description: "in INR",
+      },
+    },
+    {
+      name: "category",
+      type: "relationship",
+      relationTo: "categories",
+      hasMany: false,
+    },
+    {
+      name: "tags",
+      type: "relationship",
+      relationTo: "tags",
+      hasMany: true,
+    },
+    {
+      name: "image",
+      type: "upload",
+      relationTo: "media",
+    },
+    {
+      name: "refundPolicy",
+      type: "select",
+      options: ["30-day", "14-day", "7-day", "3-day", "1-day", "no-refunds"],
+      defaultValue: "30-day",
+    },
+  ],
+};
+```
+
+## Key Features
+
+- **Flexible Pricing**: Numeric price field in INR
+- **Categorization**: Single category assignment for organization
+- **Tagging**: Multiple tags for enhanced filtering and search
+- **Media Support**: Upload and associate product images
+- **Refund Policies**: Configurable refund windows per product
+- **Multi-tenant**: Products scoped to tenant stores (via plugin)

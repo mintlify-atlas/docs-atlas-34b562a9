@@ -1,0 +1,132 @@
+---
+title: Tenants Collection
+description: Multi-vendor store configuration and Stripe integration
+---
+
+## Overview
+
+The Tenants collection represents individual vendor stores in the multi-vendor marketplace. Each tenant has their own subdomain, branding, and Stripe payment integration.
+
+## Collection Configuration
+
+- **Slug**: `tenants`
+- **Admin Title Field**: `slug`
+
+## Fields
+
+<ParamField path="name" type="text" required>
+  The display name of the store (e.g., "Pinnacle's Store").
+  
+  - **Label**: "Store Name"
+</ParamField>
+
+<ParamField path="slug" type="text" required>
+  The subdomain identifier for the store (e.g., `[slug].market.com`).
+  
+  - **Unique**: Yes
+  - **Indexed**: Yes
+  - **Description**: This is the subdomain for the store
+</ParamField>
+
+<ParamField path="image" type="upload">
+  Store logo or branding image.
+  
+  - **Relationship**: `media` collection
+</ParamField>
+
+<ParamField path="stripeAccountId" type="text" required>
+  Stripe Connect account ID for the tenant's payment processing.
+  
+  - **Read Only**: Yes (set programmatically)
+</ParamField>
+
+<ParamField path="stripeDetailsSubmitted" type="checkbox">
+  Indicates whether the tenant has completed Stripe onboarding.
+  
+  - **Read Only**: Yes (set by Stripe webhook)
+  - **Note**: Products cannot be created until this is true
+</ParamField>
+
+## Relationships
+
+- **image**: One-to-one relationship with `media` collection
+- **Referenced by**: 
+  - Users collection (via tenants array)
+  - Products collection (via multi-tenant plugin)
+
+## Access Control
+
+No explicit access control defined in the schema. Uses Payload's default access patterns.
+
+## Stripe Integration
+
+The tenant uses Stripe Connect for payment processing:
+
+1. Each tenant has a unique `stripeAccountId`
+2. The `stripeDetailsSubmitted` flag indicates onboarding completion
+3. Product creation is blocked until Stripe details are submitted
+
+## Source Schema
+
+```typescript
+import type { CollectionConfig } from "payload";
+
+export const Tenants: CollectionConfig = {
+  slug: "tenants",
+  admin: {
+    useAsTitle: "slug",
+  },
+  fields: [
+    {
+      name: "name",
+      required: true,
+      type: "text",
+      label: "Store Name",
+      admin: {
+        description: "This is the name of the store (e.g. Pinnacle's Store)",
+      },
+    },
+    {
+      name: "slug",
+      type: "text",
+      index: true,
+      required: true,
+      unique: true,
+      admin: {
+        description:
+          "This is the subdomain for the store (e.g. [slug].market.com)",
+      },
+    },
+    {
+      name: "image",
+      type: "upload",
+      relationTo: "media",
+    },
+    {
+      name: "stripeAccountId",
+      type: "text",
+      required: true,
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
+      name: "stripeDetailsSubmitted",
+      type: "checkbox",
+      admin: {
+        readOnly: true,
+        description:
+          "You cannot create products until you submit your Stripe details",
+      },
+    },
+  ],
+};
+```
+
+## Key Features
+
+- **Multi-vendor**: Each tenant operates as an independent store
+- **Subdomain Routing**: Unique slug enables subdomain-based routing
+- **Stripe Connect**: Integrated payment processing per vendor
+- **Onboarding**: Tracks Stripe onboarding completion status
+- **Unique Constraints**: Slug must be unique for subdomain routing

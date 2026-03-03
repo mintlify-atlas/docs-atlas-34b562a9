@@ -1,0 +1,94 @@
+---
+title: "Creating Your Storefront"
+description: "Set up your vendor storefront on the marketplace platform"
+icon: "store"
+---
+
+Create your own storefront to start selling products on the marketplace. When you sign up, you'll automatically get a unique subdomain for your store.
+
+## Prerequisites
+
+- A valid email address
+- A unique username for your store
+
+## Creating your account and storefront
+
+<Steps>
+<Step title="Navigate to the sign-up page">
+  Go to the marketplace homepage and click **Sign up** in the top right corner.
+</Step>
+
+<Step title="Enter your username">
+  Choose a unique username for your store. This will become your store's subdomain.
+  
+  For example, if you enter `pinnacle`, your storefront will be accessible at:
+  ```
+  pinnacle.shop.com
+  ```
+  
+  The platform will show you a preview of your store URL as you type.
+</Step>
+
+<Step title="Complete your registration details">
+  Fill in the required information:
+  
+  - **Username**: Your store's unique identifier (used for the subdomain)
+  - **Email**: Your contact email address
+  - **Password**: A secure password for your account
+  
+  Click **Create account** to complete the registration.
+</Step>
+
+<Step title="Access your storefront">
+  After successful registration, you'll be automatically logged in. Your storefront is now created with:
+  
+  - A unique subdomain URL
+  - An empty product catalog ready for your products
+  - Access to the vendor dashboard
+</Step>
+</Steps>
+
+## What happens during sign-up
+
+When you create an account, the platform automatically:
+
+1. Creates a tenant (your storefront) with your chosen username as the store name and URL slug
+2. Sets up a Stripe account ID for future payment processing
+3. Links your user account to your storefront
+4. Logs you in so you can start managing your store
+
+## Next steps
+
+After creating your storefront:
+
+<CardGroup cols={2}>
+  <Card title="Set up Stripe" icon="credit-card" href="/guides/stripe-setup">
+    Connect your Stripe account to receive payments
+  </Card>
+  <Card title="Add products" icon="box" href="/guides/managing-products">
+    Start adding products to your storefront
+  </Card>
+</CardGroup>
+
+<Warning>
+  You cannot create products until you complete your Stripe setup and submit your payment details.
+</Warning>
+
+## Customizing your storefront
+
+You can customize your storefront by:
+
+- **Store Image**: Upload a logo or banner image to personalize your store
+- **Store Name**: While your username is the default, you can update your store's display name
+- **Slug**: Your unique subdomain identifier (set during registration)
+
+All customization can be done through the vendor dashboard.
+
+## Storefront visibility
+
+Once created, your storefront is immediately visible to buyers at your unique subdomain. However, it will appear empty until you:
+
+1. Complete Stripe Connect setup
+2. Add your first products
+
+Buyers can browse your store, view your store name and image, but won't see any products until you add them.

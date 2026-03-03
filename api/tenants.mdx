@@ -1,0 +1,142 @@
+---
+title: 'Tenants'
+description: 'Tenant endpoints for retrieving vendor/store information'
+---
+
+## getOne
+
+Retrieves a single tenant by slug with related data.
+
+### Method
+
+```typescript
+tenants.getOne.query(input)
+```
+
+### Parameters
+
+<ParamField name="slug" type="string" required>
+  The tenant slug to retrieve
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="string">
+  Tenant ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Tenant name
+</ResponseField>
+
+<ResponseField name="slug" type="string">
+  Tenant slug (unique identifier)
+</ResponseField>
+
+<ResponseField name="stripeAccountId" type="string">
+  Stripe account ID for payment processing
+</ResponseField>
+
+<ResponseField name="image" type="Media | null">
+  Tenant logo/image (depth 1)
+  
+  <Expandable title="properties">
+    <ResponseField name="url" type="string">
+      Image URL
+    </ResponseField>
+    <ResponseField name="alt" type="string">
+      Alt text for the image
+    </ResponseField>
+    <ResponseField name="width" type="number">
+      Image width
+    </ResponseField>
+    <ResponseField name="height" type="number">
+      Image height
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Tenant description
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp of creation
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string">
+  ISO 8601 timestamp of last update
+</ResponseField>
+
+### Code Example
+
+```typescript
+try {
+  const tenant = await trpc.tenants.getOne.query({
+    slug: "tech-store"
+  });
+  
+  console.log(tenant.name);
+  console.log(tenant.stripeAccountId);
+  console.log(tenant.image?.url);
+} catch (error) {
+  if (error.code === "NOT_FOUND") {
+    console.log("Tenant not found");
+  }
+}
+```
+
+### Implementation
+
+```typescript
+getOne: baseProcedure
+  .input(
+    z.object({
+      slug: z.string(),
+    })
+  )
+  .query(async ({ ctx, input }) => {
+    const tenantsData = await ctx.db.find({
+      collection: "tenants",
+      depth: 1,
+      where: {
+        slug: {
+          equals: input.slug,
+        },
+      },
+      limit: 1,
+      pagination: false,
+    });
+
+    const tenant = tenantsData.docs[0];
+
+    if (!tenant) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Tenant not found",
+      });
+    }
+
+    return tenant as Tenant & { image: Media | null };
+  })
+```
+
+### Error Handling
+
+<ResponseField name="NOT_FOUND" type="error">
+  Thrown when no tenant exists with the provided slug
+  
+  ```json
+  {
+    "code": "NOT_FOUND",
+    "message": "Tenant not found"
+  }
+  ```
+</ResponseField>
+
+### Notes
+
+- Tenants represent individual vendors/stores in the marketplace
+- Each tenant has a unique slug used for URLs and identification
+- The `depth: 1` parameter ensures the tenant's image is fully populated
+- Pagination is disabled since we're querying by unique slug

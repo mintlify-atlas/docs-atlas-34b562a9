@@ -1,0 +1,138 @@
+---
+title: 'Tags'
+description: 'Tag endpoints for product labeling and filtering'
+---
+
+## getMany
+
+Retrieves a paginated list of tags.
+
+### Method
+
+```typescript
+tags.getMany.query(input)
+```
+
+### Parameters
+
+<ParamField name="cursor" type="number" default="1">
+  Page number for pagination
+</ParamField>
+
+<ParamField name="limit" type="number" default="8">
+  Number of tags per page (DEFAULT_LIMIT = 8)
+</ParamField>
+
+### Response
+
+<ResponseField name="docs" type="array">
+  Array of tag objects
+  
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">
+      Tag ID
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Tag name
+    </ResponseField>
+    <ResponseField name="slug" type="string">
+      Tag slug (unique identifier)
+    </ResponseField>
+    <ResponseField name="createdAt" type="string">
+      ISO 8601 timestamp of creation
+    </ResponseField>
+    <ResponseField name="updatedAt" type="string">
+      ISO 8601 timestamp of last update
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="totalDocs" type="number">
+  Total number of tags
+</ResponseField>
+
+<ResponseField name="page" type="number">
+  Current page number
+</ResponseField>
+
+<ResponseField name="totalPages" type="number">
+  Total number of pages
+</ResponseField>
+
+<ResponseField name="hasNextPage" type="boolean">
+  Whether there are more pages available
+</ResponseField>
+
+<ResponseField name="hasPrevPage" type="boolean">
+  Whether there are previous pages
+</ResponseField>
+
+<ResponseField name="limit" type="number">
+  Number of items per page
+</ResponseField>
+
+<ResponseField name="pagingCounter" type="number">
+  Starting document number for the current page
+</ResponseField>
+
+<ResponseField name="prevPage" type="number | null">
+  Previous page number (null if on first page)
+</ResponseField>
+
+<ResponseField name="nextPage" type="number | null">
+  Next page number (null if on last page)
+</ResponseField>
+
+### Code Example
+
+```typescript
+// Get first page of tags
+const tagsPage1 = await trpc.tags.getMany.query({
+  cursor: 1,
+  limit: 10
+});
+
+console.log(`Showing ${tagsPage1.docs.length} of ${tagsPage1.totalDocs} tags`);
+console.log(`Page ${tagsPage1.page} of ${tagsPage1.totalPages}`);
+
+tagsPage1.docs.forEach(tag => {
+  console.log(`${tag.name} (${tag.slug})`);
+});
+
+// Get next page if available
+if (tagsPage1.hasNextPage) {
+  const tagsPage2 = await trpc.tags.getMany.query({
+    cursor: tagsPage1.nextPage,
+    limit: 10
+  });
+}
+```
+
+### Implementation
+
+```typescript
+getMany: baseProcedure
+  .input(
+    z.object({
+      cursor: z.number().default(1),
+      limit: z.number().default(DEFAULT_LIMIT),
+    })
+  )
+  .query(async ({ ctx, input }) => {
+    const data = await ctx.db.find({
+      collection: "tags",
+      page: input.cursor,
+      limit: input.limit,
+    });
+
+    return data;
+  })
+```
+
+### Notes
+
+- Tags are used to label and categorize products
+- Results are paginated with a default limit of 8 tags per page
+- Unlike categories, tags don't have a hierarchical structure
+- Useful for building tag filters and product discovery features
+- Tags can be used in the `products.getMany` endpoint to filter products

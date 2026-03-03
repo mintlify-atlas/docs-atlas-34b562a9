@@ -1,0 +1,319 @@
+---
+title: "Using the Vendor Dashboard"
+description: "Navigate and manage your storefront through the vendor dashboard"
+icon: "gauge"
+---
+
+The vendor dashboard is your central hub for managing your storefront, products, and business operations on the marketplace.
+
+## Accessing the dashboard
+
+You can access the vendor dashboard in two ways:
+
+1. **Direct URL**: Navigate to `/admin` from any page on the marketplace
+2. **After login**: You're automatically directed to the dashboard after signing in
+
+<Note>
+  The vendor dashboard is built on Payload CMS, providing a powerful and flexible content management system for your storefront.
+</Note>
+
+## Dashboard overview
+
+The vendor dashboard provides access to:
+
+- **Collections**: Manage products, categories, tags, and media
+- **Tenant settings**: Configure your storefront details
+- **User account**: Manage your profile and credentials
+
+## Managing your collections
+
+### Products Collection
+
+The Products collection is where you manage your entire product catalog.
+
+**What you can do:**
+- View all your products in a list
+- Create new products
+- Edit existing products
+- Delete products
+- Search and filter products
+- Bulk operations on products
+
+**Product list view shows:**
+- Product name (title)
+- Price
+- Category
+- Number of tags
+- Last updated date
+
+Click on any product to view and edit its details.
+
+### Categories Collection
+
+Manage product categories for better organization.
+
+**Category fields:**
+- **Name**: Display name of the category
+- **Slug**: URL-friendly identifier
+- **Color**: Visual identifier for the category
+- **Parent**: Link to parent category (for subcategories)
+- **Subcategories**: View linked child categories
+
+**Creating subcategories:**
+1. Create a parent category first
+2. Create a new category
+3. Set the parent relationship to your parent category
+4. The parent category automatically shows the subcategory in its subcategories list
+
+### Tags Collection
+
+Create and manage tags for flexible product classification.
+
+**Using tags:**
+- Create reusable tags that can be applied to multiple products
+- Tags help buyers filter and discover products
+- Products can have multiple tags
+- Tags appear in filter options on product listing pages
+
+### Media Collection
+
+Manage all uploaded images and files.
+
+**Media features:**
+- Upload product images
+- Upload store logo/banner
+- View all uploaded files
+- See where media is used (products, tenant profile)
+- Delete unused media
+
+**Supported formats:**
+- Images: JPG, PNG, WebP
+- File size limits apply based on platform configuration
+
+## Tenant settings
+
+Manage your storefront configuration and identity.
+
+**Tenant fields:**
+
+- **Store Name**: Your storefront's display name (e.g., "Pinnacle's Store")
+- **Slug**: Your subdomain identifier (e.g., `pinnacle` for `pinnacle.shop.com`)
+- **Image**: Your store logo or banner image
+- **Stripe Account ID**: Your Stripe Connected Account identifier (read-only)
+- **Stripe Details Submitted**: Status of your Stripe onboarding (read-only)
+
+<Warning>
+  The **slug** field is unique and indexed. Changing it will change your storefront URL, which may break existing links.
+</Warning>
+
+### Updating store information
+
+<Steps>
+<Step title="Navigate to Tenants">
+  In the dashboard sidebar, find and click on **Tenants** collection.
+</Step>
+
+<Step title="Select your tenant">
+  Click on your storefront entry (identified by your slug).
+</Step>
+
+<Step title="Edit fields">
+  Update any editable fields:
+  - Change your store name
+  - Upload or change your store image
+  - View (but not edit) Stripe information
+</Step>
+
+<Step title="Save changes">
+  Click **Save** to update your storefront. Changes appear immediately on your storefront.
+</Step>
+</Steps>
+
+## User account management
+
+Manage your vendor account details.
+
+**Account fields:**
+- **Email**: Your login email address
+- **Username**: Your account username
+- **Password**: Change your password
+- **Tenants**: View linked storefronts
+
+**Changing your password:**
+1. Navigate to your user profile in the dashboard
+2. Enter a new password
+3. Confirm the new password
+4. Save changes
+
+## Dashboard features
+
+### Search and filter
+
+Most collections include search and filter capabilities:
+
+- **Search**: Find records by name or other text fields
+- **Filter**: Apply filters based on categories, tags, or other criteria
+- **Sort**: Organize records by date, name, or other attributes
+
+### Bulk operations
+
+Perform actions on multiple items:
+
+- Select multiple products using checkboxes
+- Apply bulk actions (delete, update status, etc.)
+- Efficient management of large product catalogs
+
+### Draft and publish
+
+Depending on configuration, you may be able to:
+
+- Save products as drafts
+- Preview products before publishing
+- Schedule product publication
+
+### Relationship management
+
+The dashboard handles relationships between collections:
+
+- **Select categories** when creating products
+- **Choose multiple tags** from existing tags
+- **Upload or select media** from the media library
+- **View related items** (e.g., see all products in a category)
+
+## Navigation structure
+
+### Sidebar navigation
+
+The left sidebar provides access to:
+
+1. **Dashboard home**: Overview of your storefront
+2. **Collections**:
+   - Products
+   - Categories
+   - Tags
+   - Media
+   - Tenants
+3. **Account**: Your user profile
+4. **Logout**: Sign out of the dashboard
+
+### Breadcrumb navigation
+
+At the top of the page, breadcrumbs show your current location:
+```
+Dashboard > Products > [Product Name]
+```
+
+Click any breadcrumb to navigate back to that level.
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="Regular catalog maintenance">
+    Periodically review your products to:
+    - Remove discontinued items
+    - Update prices and descriptions
+    - Refresh product images
+    - Ensure categories are still relevant
+  </Accordion>
+  
+  <Accordion title="Organize with categories">
+    Create a logical category hierarchy:
+    - Use parent categories for broad groupings
+    - Create subcategories for specific niches
+    - Keep category names clear and descriptive
+    - Limit category depth to 2-3 levels
+  </Accordion>
+  
+  <Accordion title="Manage your media library">
+    Keep your media library organized:
+    - Use descriptive file names before uploading
+    - Delete unused images to save space
+    - Optimize images before uploading
+    - Regularly audit and clean up media
+  </Accordion>
+  
+  <Accordion title="Use tags effectively">
+    Create meaningful tags:
+    - Use consistent tag naming conventions
+    - Don't over-tag products
+    - Create tags buyers would actually search for
+    - Avoid duplicate or similar tags
+  </Accordion>
+  
+  <Accordion title="Keep Stripe information current">
+    Monitor your Stripe status:
+    - Check that `stripeDetailsSubmitted` is true
+    - Update bank details directly in Stripe dashboard
+    - Respond to any Stripe verification requests promptly
+  </Accordion>
+</AccordionGroup>
+
+## Dashboard tips and shortcuts
+
+### Keyboard shortcuts
+
+The Payload admin interface may support keyboard shortcuts:
+
+- `Cmd/Ctrl + S`: Save current form
+- `Esc`: Close modals or cancel operations
+- Check the Payload documentation for additional shortcuts
+
+### Quick actions
+
+- **Duplicate products**: Create similar products faster by duplicating existing ones
+- **Batch upload**: Upload multiple images at once to the media library
+- **Quick edit**: Click directly into list fields for inline editing (if enabled)
+
+### Mobile access
+
+The dashboard is responsive and works on mobile devices:
+
+- Access from tablet or phone browsers
+- Some complex operations work better on desktop
+- Images can be uploaded from mobile camera roll
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Can't access dashboard">
+    If you can't access `/admin`:
+    - Ensure you're logged in
+    - Clear browser cache and cookies
+    - Try a different browser
+    - Check that you have vendor permissions
+  </Accordion>
+  
+  <Accordion title="Can't create products">
+    Verify that:
+    - Your Stripe details are submitted (`stripeDetailsSubmitted` is true)
+    - You have the necessary permissions
+    - All required fields are filled correctly
+  </Accordion>
+  
+  <Accordion title="Changes not appearing on storefront">
+    If updates don't show:
+    - Hard refresh your storefront page (Cmd/Ctrl + Shift + R)
+    - Check that you saved your changes in the dashboard
+    - Wait a few moments for cache to clear
+    - Verify you're viewing the correct storefront URL
+  </Accordion>
+  
+  <Accordion title="Image upload issues">
+    If images won't upload:
+    - Check file size limits
+    - Ensure file format is supported (JPG, PNG)
+    - Try a different image
+    - Check your internet connection
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Managing Products" icon="box" href="/guides/managing-products">
+    Learn how to add and manage your products
+  </Card>
+  <Card title="Buyer Experience" icon="shopping-cart" href="/guides/buyer-experience">
+    Understand how buyers see your storefront
+  </Card>
+</CardGroup>

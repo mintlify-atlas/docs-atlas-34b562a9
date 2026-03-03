@@ -1,0 +1,433 @@
+---
+title: Payload CMS
+description: Working with Payload CMS collections, configuration, and multi-tenancy
+---
+
+The platform uses **Payload CMS 3** as the headless CMS and backend data layer. It provides a powerful admin interface, type-safe APIs, and integrated multi-tenant support.
+
+## Configuration
+
+Payload is configured in `src/payload.config.ts`:
+
+```typescript
+// src/payload.config.ts
+import { mongooseAdapter } from "@payloadcms/db-mongodb";
+import { payloadCloudPlugin } from "@payloadcms/payload-cloud";
+import { lexicalEditor } from "@payloadcms/richtext-lexical";
+import { multiTenantPlugin } from "@payloadcms/plugin-multi-tenant";
+import { buildConfig } from "payload";
+
+import { Users } from "./collections/Users";
+import { Media } from "./collections/Media";
+import { Tags } from "./collections/Tags";
+import { Tenants } from "./collections/Tenants";
+import { Products } from "./collections/Products";
+import { Categories } from "./collections/Categories";
+
+export default buildConfig({
+  admin: {
+    user: Users.slug,
+  },
+  collections: [Users, Media, Categories, Products, Tags, Tenants],
+  editor: lexicalEditor(),
+  secret: process.env.PAYLOAD_SECRET || "",
+  db: mongooseAdapter({
+    url: process.env.DATABASE_URI || "",
+  }),
+  plugins: [
+    payloadCloudPlugin(),
+    multiTenantPlugin({
+      collections: {
+        products: {},
+      },
+      tenantsArrayField: {
+        includeDefaultField: false,
+      },
+      userHasAccessToAllTenants: (user) =>
+        Boolean(user?.roles?.includes("super-admin")),
+    }),
+  ],
+});
+```
+
+## Collections
+
+Payload collections define the database schema and admin interface. All collections are located in `src/collections/`.
+
+### Users Collection
+
+```typescript
+// src/collections/Users.ts
+import type { CollectionConfig } from "payload";
+import { tenantsArrayField } from "@payloadcms/plugin-multi-tenant/fields";
+
+export const Users: CollectionConfig = {
+  slug: "users",
+  admin: {
+    useAsTitle: "email",
+  },
+  auth: true,  // Enables authentication
+  fields: [
+    {
+      name: "username",
+      required: true,
+      unique: true,
+      type: "text",
+    },
+    {
+      admin: {
+        position: "sidebar",
+      },
+      name: "roles",
+      type: "select",
+      defaultValue: ["user"],
+      hasMany: true,
+      options: ["super-admin", "user"],
+    },
+    {
+      ...tenantsArrayField({...}),
+      admin: {
+        position: "sidebar",
+      },
+    },
+  ],
+};
+```
+
+### Tenants Collection
+
+```typescript
+// src/collections/Tenants.ts
+import type { CollectionConfig } from "payload";
+
+export const Tenants: CollectionConfig = {
+  slug: "tenants",
+  admin: {
+    useAsTitle: "slug",
+  },
+  fields: [
+    {
+      name: "name",
+      required: true,
+      type: "text",
+      label: "Store Name",
+      admin: {
+        description: "This is the name of the store (e.g. Pinnacle's Store)",
+      },
+    },
+    {
+      name: "slug",
+      type: "text",
+      index: true,
+      required: true,
+      unique: true,
+      admin: {
+        description: "This is the subdomain for the store (e.g. [slug].market.com)",
+      },
+    },
+    {
+      name: "image",
+      type: "upload",
+      relationTo: "media",
+    },
+    {
+      name: "stripeAccountId",
+      type: "text",
+      required: true,
+      admin: {
+        readOnly: true,
+      },
+    },
+    {
+      name: "stripeDetailsSubmitted",
+      type: "checkbox",
+      admin: {
+        readOnly: true,
+        description: "You cannot create products until you submit your Stripe details",
+      },
+    },
+  ],
+};
+```
+
+### Products Collection
+
+```typescript
+// src/collections/Products.ts
+import type { CollectionConfig } from "payload";
+
+export const Products: CollectionConfig = {
+  slug: "products",
+  fields: [
+    {
+      name: "name",
+      type: "text",
+      required: true,
+    },
+    {
+      name: "description",
+      type: "text",
+    },
+    {
+      name: "price",
+      type: "number",
+      required: true,
+      admin: {
+        description: "in INR",
+      },
+    },
+    {
+      name: "category",
+      type: "relationship",
+      relationTo: "categories",
+      hasMany: false,
+    },
+    {
+      name: "tags",
+      type: "relationship",
+      relationTo: "tags",
+      hasMany: true,
+    },
+    {
+      name: "image",
+      type: "upload",
+      relationTo: "media",
+    },
+    {
+      name: "refundPolicy",
+      type: "select",
+      options: ["30-day", "14-day", "7-day", "3-day", "1-day", "no-refunds"],
+      defaultValue: "30-day",
+    },
+  ],
+};
+```
+
+### Categories Collection
+
+```typescript
+// src/collections/Categories.ts
+import type { CollectionConfig } from "payload";
+
+export const Categories: CollectionConfig = {
+  slug: "categories",
+  admin: {
+    useAsTitle: "name",
+  },
+  fields: [
+    {
+      name: "name",
+      type: "text",
+      required: true,
+    },
+    {
+      name: "slug",
+      type: "text",
+      required: true,
+      unique: true,
+      index: true,
+    },
+    {
+      name: "color",
+      type: "text",
+    },
+    {
+      name: "parent",
+      type: "relationship",
+      relationTo: "categories",
+      hasMany: false,
+    },
+    {
+      name: "subcategories",
+      type: "join",
+      collection: "categories",
+      on: "parent",
+      hasMany: true,
+    },
+  ],
+};
+```
+
+### Tags Collection
+
+```typescript
+// src/collections/Tags.ts
+import type { CollectionConfig } from "payload";
+
+export const Tags: CollectionConfig = {
+  slug: "tags",
+  admin: {
+    useAsTitle: "name",
+  },
+  fields: [
+    {
+      name: "name",
+      type: "text",
+      required: true,
+      unique: true,
+    },
+    {
+      name: "products",
+      type: "relationship",
+      relationTo: "products",
+      hasMany: true,
+    },
+  ],
+};
+```
+
+### Media Collection
+
+```typescript
+// src/collections/Media.ts
+import type { CollectionConfig } from 'payload'
+
+export const Media: CollectionConfig = {
+  slug: 'media',
+  access: {
+    read: () => true,
+  },
+  fields: [
+    {
+      name: 'alt',
+      type: 'text',
+      required: true,
+    },
+  ],
+  upload: true,
+}
+```
+
+## Multi-Tenancy Plugin
+
+The platform uses the `@payloadcms/plugin-multi-tenant` to enable vendor isolation:
+
+```typescript
+multiTenantPlugin({
+  collections: {
+    products: {},  // Products are tenant-scoped
+  },
+  tenantsArrayField: {
+    includeDefaultField: false,
+  },
+  userHasAccessToAllTenants: (user) =>
+    Boolean(user?.roles?.includes("super-admin")),
+})
+```
+
+### How It Works
+
+- **Products** are automatically scoped to tenants
+- **Super-admins** can access all tenants
+- **Regular users** only see data for their assigned tenants
+- The `tenantsArrayField` is added to Users and Products collections
+
+## Field Types
+
+Payload supports various field types used in this platform:
+
+| Type | Usage | Example |
+|------|-------|--------|
+| `text` | Short text input | Name, slug, username |
+| `number` | Numeric values | Product price |
+| `select` | Dropdown selection | Roles, refund policy |
+| `checkbox` | Boolean values | stripeDetailsSubmitted |
+| `relationship` | References to other collections | Product → Category |
+| `upload` | File uploads | Product images |
+| `join` | Virtual field for reverse relationships | Category subcategories |
+
+## Admin Interface
+
+Access the Payload admin panel at `/admin`. The interface is automatically generated from collection configurations.
+
+### Admin Options
+
+```typescript
+admin: {
+  useAsTitle: "email",      // Field to use as record title
+  position: "sidebar",      // Position field in sidebar
+  description: "...",       // Help text
+  readOnly: true,           // Prevent editing
+}
+```
+
+## Accessing Payload in Code
+
+Get the Payload instance in server-side code:
+
+```typescript
+import { getPayload } from "payload";
+import config from "@payload-config";
+
+const payload = await getPayload({ config });
+
+// Query data
+const products = await payload.find({
+  collection: "products",
+  where: {
+    price: {
+      greater_than: 100,
+    },
+  },
+});
+```
+
+## Type Generation
+
+Payload automatically generates TypeScript types:
+
+```bash
+npm run generate:types
+```
+
+Types are generated in `src/payload-types.ts` and can be imported:
+
+```typescript
+import { Product, Category, Tenant } from "@/payload-types";
+```
+
+## Database Operations
+
+```bash
+# Reset database (destructive)
+npm run db:fresh
+
+# Seed database with test data
+npm run db:seed
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Collection Design">
+    - Use descriptive field names
+    - Add admin descriptions for clarity
+    - Index frequently queried fields
+    - Set appropriate access controls
+  </Accordion>
+  
+  <Accordion title="Relationships">
+    - Use `relationship` for references
+    - Use `join` for reverse relationships
+    - Consider query depth for performance
+    - Avoid circular dependencies
+  </Accordion>
+  
+  <Accordion title="Validation">
+    - Mark required fields
+    - Use unique constraints where appropriate
+    - Validate data at the collection level
+    - Provide clear validation messages
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Database Schema" icon="table" href="/development/database-schema">
+    Explore collection relationships
+  </Card>
+  <Card title="tRPC API" icon="code" href="/development/trpc-api">
+    Query Payload data via tRPC
+  </Card>
+</CardGroup>

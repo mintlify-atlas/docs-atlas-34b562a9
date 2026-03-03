@@ -1,0 +1,195 @@
+---
+title: "Managing Products"
+description: "Add, edit, and manage products in your storefront"
+icon: "box"
+---
+
+Manage your product catalog through the vendor dashboard. Add new products, update existing ones, and control what buyers see in your storefront.
+
+## Prerequisites
+
+- An active storefront account
+- Stripe details submitted (required before creating products)
+
+<Warning>
+  You must complete your Stripe Connect setup and submit your payment details before you can create products.
+</Warning>
+
+## Adding a new product
+
+<Steps>
+<Step title="Access the admin dashboard">
+  Navigate to the admin panel at `/admin` to access your vendor dashboard.
+</Step>
+
+<Step title="Go to Products collection">
+  In the admin sidebar, click on **Products** to view your product catalog.
+</Step>
+
+<Step title="Create a new product">
+  Click **Create New** to open the product creation form.
+</Step>
+
+<Step title="Fill in product details">
+  Enter your product information:
+  
+  **Required fields:**
+  - **Name**: The product title that buyers will see
+  - **Price**: Product price in INR (Indian Rupees)
+  
+  **Optional fields:**
+  - **Description**: Detailed description of your product
+  - **Category**: Select a category to help buyers find your product
+  - **Tags**: Add multiple tags for better product discovery
+  - **Image**: Upload a product image
+  - **Refund Policy**: Choose your refund window
+</Step>
+
+<Step title="Set your refund policy">
+  Choose from the available refund policy options:
+  
+  - 30-day money back guarantee (default)
+  - 14-day money back guarantee
+  - 7-day money back guarantee
+  - 3-day money back guarantee
+  - 1-day money back guarantee
+  - No refunds
+  
+  This policy will be displayed on the product page to buyers.
+</Step>
+
+<Step title="Save and publish">
+  Click **Save** to publish your product. It will immediately appear in your storefront.
+</Step>
+</Steps>
+
+## Product fields explained
+
+### Name
+The product name appears on product cards, product pages, and in search results. Keep it clear and descriptive.
+
+### Description
+Provide detailed information about your product. If no description is provided, the product page will show "No description provided" to buyers.
+
+### Price
+Enter the price in Indian Rupees (INR). The platform automatically formats and displays the price to buyers using the currency symbol.
+
+### Category
+Select a category to organize your products. Categories can have subcategories, helping buyers navigate to your products through the marketplace hierarchy.
+
+### Tags
+Add multiple tags to improve product discoverability. Tags help buyers filter and find products that match their interests.
+
+### Image
+Upload a product image to make your listing more attractive. Products without images will display a placeholder.
+
+**Image recommendations:**
+- Use high-quality images
+- Recommended aspect ratio: 3.9:1 for product detail pages
+- Supported formats: JPG, PNG
+
+### Refund Policy
+Your chosen refund policy appears prominently on the product detail page. Choose a policy that balances buyer confidence with your business needs.
+
+## Editing existing products
+
+<Steps>
+<Step title="Navigate to Products">
+  In the admin dashboard, go to the **Products** collection.
+</Step>
+
+<Step title="Select a product">
+  Click on the product you want to edit from the product list.
+</Step>
+
+<Step title="Update fields">
+  Modify any product fields you want to change.
+</Step>
+
+<Step title="Save changes">
+  Click **Save** to update the product. Changes appear immediately on your storefront.
+</Step>
+</Steps>
+
+## How products appear to buyers
+
+Your products are displayed to buyers in several places:
+
+### Product cards
+In product listings, buyers see:
+- Product image or placeholder
+- Product name
+- Price with currency formatting
+- Add to cart button
+
+### Product detail page
+When buyers click on a product, they see:
+- Large product image (3.9:1 aspect ratio)
+- Product name and description
+- Price in a highlighted badge
+- Your store name and logo (clickable link to your storefront)
+- Star ratings display
+- Refund policy information
+- Add to cart button
+- Share link button
+
+### Your storefront
+Products appear in your tenant's dedicated storefront at `[your-username].shop.com`, where buyers can:
+- Browse all your products
+- Filter by tags and price
+- Sort products
+- View product details
+
+## Organizing products with categories and tags
+
+### Categories
+Categories create a hierarchical structure:
+- **Parent categories**: Top-level product groupings
+- **Subcategories**: More specific classifications within a parent category
+
+Buyers can navigate through category and subcategory pages to discover products.
+
+### Tags
+Tags provide flexible, multi-dimensional classification:
+- Products can have multiple tags
+- Buyers can filter products by tags
+- Tags work alongside categories for better product discovery
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="Write clear product names">
+    Use descriptive names that clearly communicate what you're selling. Avoid excessive capitalization or special characters.
+  </Accordion>
+  
+  <Accordion title="Provide detailed descriptions">
+    Even though descriptions are optional, always provide them. Detailed descriptions help buyers make informed decisions and reduce refund requests.
+  </Accordion>
+  
+  <Accordion title="Use high-quality images">
+    Products with professional images sell better. Ensure your images are clear, well-lit, and showcase your product effectively.
+  </Accordion>
+  
+  <Accordion title="Choose appropriate categories">
+    Select categories that accurately represent your products to help buyers find them through browse navigation.
+  </Accordion>
+  
+  <Accordion title="Set realistic refund policies">
+    Balance buyer confidence with your business constraints. Longer refund windows can increase buyer trust.
+  </Accordion>
+  
+  <Accordion title="Use tags strategically">
+    Add relevant tags that buyers might search for or filter by. Don't over-tag with irrelevant terms.
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Vendor Dashboard" icon="gauge" href="/guides/vendor-dashboard">
+    Learn how to use the vendor dashboard
+  </Card>
+  <Card title="Buyer Experience" icon="shopping-cart" href="/guides/buyer-experience">
+    Understand how buyers interact with your products
+  </Card>
+</CardGroup>

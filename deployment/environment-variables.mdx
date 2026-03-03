@@ -1,0 +1,175 @@
+---
+title: Environment Variables
+description: Complete reference for all required and optional environment variables
+---
+
+This page documents all environment variables required to run the multi-vendor marketplace platform.
+
+## Required Environment Variables
+
+These environment variables must be set for the application to function properly.
+
+### PAYLOAD_SECRET
+
+**Type:** String  
+**Required:** Yes  
+**Used in:** `src/payload.config.ts:31`
+
+A secret key used by Payload CMS for encryption and security purposes. This should be a long, random string.
+
+<Warning>
+  Never commit your `PAYLOAD_SECRET` to version control. Generate a secure random string of at least 32 characters.
+</Warning>
+
+```bash
+# Generate a secure secret (example)
+openssl rand -base64 32
+```
+
+**Example:**
+```env
+PAYLOAD_SECRET=your-super-secret-key-here-minimum-32-chars
+```
+
+### DATABASE_URI
+
+**Type:** String (MongoDB Connection URI)  
+**Required:** Yes  
+**Used in:** `src/payload.config.ts:36`
+
+MongoDB connection string for the database. The application uses MongoDB via the Mongoose adapter.
+
+**Format:**
+```
+mongodb://[username:password@]host[:port]/database[?options]
+```
+
+**Examples:**
+
+```env
+# Local development
+DATABASE_URI=mongodb://localhost:27017/marketplace
+
+# MongoDB Atlas (production)
+DATABASE_URI=mongodb+srv://username:password@cluster.mongodb.net/marketplace?retryWrites=true&w=majority
+
+# Self-hosted with authentication
+DATABASE_URI=mongodb://admin:password@your-server.com:27017/marketplace?authSource=admin
+```
+
+<Warning>
+  Ensure your DATABASE_URI includes proper authentication credentials in production and uses SSL/TLS for secure connections.
+</Warning>
+
+## Optional Environment Variables
+
+### NEXT_PUBLIC_APP_URL
+
+**Type:** String (URL)  
+**Required:** No (optional for SSR)  
+**Used in:** `src/trpc/client.tsx:29`
+
+The public URL of your application. This is used for server-side rendering to construct the tRPC API endpoint.
+
+**When to set:**
+- Required for server-side rendering in production
+- Required for API calls during SSR
+- Not needed for client-side only operations
+
+**Examples:**
+
+```env
+# Production
+NEXT_PUBLIC_APP_URL=https://marketplace.yourcompany.com
+
+# Staging
+NEXT_PUBLIC_APP_URL=https://staging.marketplace.yourcompany.com
+
+# Local development (usually not needed)
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+## Environment File Setup
+
+Create a `.env` file in the root of your project:
+
+```env
+# .env
+PAYLOAD_SECRET=your-super-secret-key-here-minimum-32-chars
+DATABASE_URI=mongodb://localhost:27017/marketplace
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+<Warning>
+  Add `.env` to your `.gitignore` file to prevent committing sensitive credentials to version control.
+</Warning>
+
+## Environment-Specific Configurations
+
+### Development
+
+```env
+PAYLOAD_SECRET=dev-secret-key-change-in-production
+DATABASE_URI=mongodb://localhost:27017/marketplace-dev
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+### Staging
+
+```env
+PAYLOAD_SECRET=your-staging-secret-key
+DATABASE_URI=mongodb+srv://user:pass@staging-cluster.mongodb.net/marketplace-staging
+NEXT_PUBLIC_APP_URL=https://staging.yourapp.com
+```
+
+### Production
+
+```env
+PAYLOAD_SECRET=your-production-secret-key
+DATABASE_URI=mongodb+srv://user:pass@prod-cluster.mongodb.net/marketplace
+NEXT_PUBLIC_APP_URL=https://yourapp.com
+```
+
+## Validation
+
+To verify your environment variables are set correctly:
+
+1. Check that required variables are present:
+
+```bash
+node -e "console.log(process.env.PAYLOAD_SECRET ? '✓ PAYLOAD_SECRET set' : '✗ PAYLOAD_SECRET missing')"
+node -e "console.log(process.env.DATABASE_URI ? '✓ DATABASE_URI set' : '✗ DATABASE_URI missing')"
+```
+
+2. Test database connectivity:
+
+```bash
+npm run db:fresh
+```
+
+## Security Best Practices
+
+1. **Use different secrets per environment** - Never reuse production secrets in development
+2. **Rotate secrets regularly** - Change PAYLOAD_SECRET periodically
+3. **Limit database access** - Use MongoDB user accounts with minimal required permissions
+4. **Enable SSL/TLS** - Always use encrypted connections in production
+5. **Use secret management** - Consider using tools like AWS Secrets Manager, HashiCorp Vault, or similar
+6. **Monitor access** - Enable MongoDB audit logs in production
+
+## Troubleshooting
+
+### "PAYLOAD_SECRET is required"
+
+Ensure PAYLOAD_SECRET is set in your `.env` file and the file is in the project root.
+
+### Database connection errors
+
+Verify:
+- MongoDB is running (local) or accessible (remote)
+- Credentials are correct
+- Network/firewall allows connections
+- Database name is correct
+
+### "NEXT_PUBLIC_APP_URL undefined" warnings
+
+This is normal in development. Set the variable if you need SSR API calls or are deploying to production.

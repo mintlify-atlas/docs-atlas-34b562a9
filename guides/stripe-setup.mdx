@@ -1,0 +1,231 @@
+---
+title: "Setting Up Stripe Connect"
+description: "Connect your Stripe account to receive payments from buyers"
+icon: "credit-card"
+---
+
+Set up Stripe Connect to receive payments when buyers purchase your products. This is a required step before you can create and sell products on the marketplace.
+
+## Prerequisites
+
+- An active storefront account
+- Business information for Stripe verification
+- Bank account details for receiving payouts
+
+## Why Stripe Connect is required
+
+The marketplace uses Stripe Connect to:
+
+- Process payments securely from buyers
+- Transfer funds directly to your bank account
+- Handle refunds according to your refund policies
+- Provide transaction reporting and analytics
+- Ensure compliance with payment regulations
+
+<Info>
+  Each vendor has their own Stripe Connected Account, ensuring you receive payments directly and maintain control over your funds.
+</Info>
+
+## Understanding your Stripe account
+
+When you create a storefront, the platform automatically:
+
+1. Creates a Stripe Account ID for your tenant
+2. Sets the `stripeDetailsSubmitted` flag to `false`
+3. Blocks product creation until Stripe details are submitted
+
+### Stripe fields in your tenant
+
+Your tenant record includes:
+
+- **stripeAccountId**: Your unique Stripe Connected Account identifier (read-only)
+- **stripeDetailsSubmitted**: Indicates whether you've completed Stripe onboarding (read-only)
+
+<Warning>
+  You cannot create products until `stripeDetailsSubmitted` is `true`. The admin dashboard will show: "You cannot create products until you submit your Stripe details."
+</Warning>
+
+## Setting up Stripe Connect
+
+<Steps>
+<Step title="Access your vendor dashboard">
+  Navigate to the admin panel at `/admin` and log in with your credentials.
+</Step>
+
+<Step title="Go to account settings">
+  Look for your tenant settings or store configuration section in the dashboard.
+</Step>
+
+<Step title="Initiate Stripe Connect onboarding">
+  Click on the **Connect Stripe** or **Set up payments** button to begin the Stripe Connect onboarding flow.
+  
+  This will redirect you to Stripe's secure onboarding portal.
+</Step>
+
+<Step title="Complete Stripe onboarding">
+  Provide the required information in Stripe's onboarding form:
+  
+  **Business information:**
+  - Business type (individual, company, etc.)
+  - Business name and address
+  - Tax identification information
+  
+  **Personal information:**
+  - Your name and date of birth
+  - Contact information
+  - Identification documents (if required)
+  
+  **Bank account details:**
+  - Bank account number
+  - Routing number
+  - Account holder name
+</Step>
+
+<Step title="Submit your details">
+  Review all information and submit your Stripe Connect application.
+  
+  Stripe may require additional verification steps depending on your business type and location.
+</Step>
+
+<Step title="Verify completion">
+  After successful submission, you'll be redirected back to the marketplace dashboard.
+  
+  The `stripeDetailsSubmitted` flag will now be set to `true`, and you can start creating products.
+</Step>
+</Steps>
+
+## What information Stripe requires
+
+Stripe Connect requires different information based on your business type:
+
+### For individuals
+- Full legal name
+- Date of birth
+- Home address
+- Social Security Number or Tax ID
+- Government-issued ID (in some cases)
+- Bank account information
+
+### For businesses
+- Business legal name
+- Business type and structure
+- Business address
+- Employer Identification Number (EIN)
+- Business representative information
+- Ownership information (for certain business types)
+- Bank account information
+
+<Note>
+  Requirements may vary by country and region. Stripe will guide you through the specific requirements for your location.
+</Note>
+
+## After Stripe setup
+
+Once your Stripe details are submitted:
+
+### You can now:
+- Create and publish products
+- Receive payments from buyers
+- View transaction history in Stripe dashboard
+- Manage refunds and disputes
+- Receive automatic payouts to your bank account
+
+### Payment flow:
+1. Buyer adds your products to cart and checks out
+2. Buyer enters payment information
+3. Stripe processes the payment
+4. Funds are transferred to your Stripe Connected Account
+5. Stripe automatically pays out to your linked bank account
+
+## Managing your Stripe account
+
+### Accessing Stripe dashboard
+You can access your Stripe dashboard directly at [dashboard.stripe.com](https://dashboard.stripe.com) to:
+
+- View detailed transaction history
+- Manage refunds and disputes
+- Update bank account information
+- Download financial reports
+- Configure payout schedules
+- Update business information
+
+### Payout schedule
+By default, Stripe transfers funds to your bank account on a rolling basis:
+
+- Standard payout timing varies by country
+- You can customize payout frequency in Stripe dashboard
+- View pending and completed payouts in Stripe
+
+### Updating information
+If you need to update your business or bank account information:
+
+1. Log in to your Stripe dashboard
+2. Navigate to **Settings**
+3. Update the relevant information
+4. Save changes
+
+Changes to your Stripe account don't require re-onboarding in the marketplace.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Can't create products after Stripe setup">
+    Check that:
+    - You completed the entire Stripe onboarding flow
+    - You submitted all required information
+    - You didn't close the Stripe window before completion
+    
+    If the issue persists, try logging out and back in, or contact support.
+  </Accordion>
+  
+  <Accordion title="Stripe onboarding incomplete">
+    If you closed the Stripe window before completing onboarding:
+    - Return to your vendor dashboard
+    - Look for a notification about incomplete Stripe setup
+    - Click the link to resume onboarding
+    
+    You don't need to start over - Stripe saves your progress.
+  </Accordion>
+  
+  <Accordion title="Need to change bank account">
+    To update your bank account information:
+    - Log in to your Stripe dashboard directly
+    - Go to Settings → Bank accounts and scheduling
+    - Update your bank account details
+    
+    You don't need to update anything in the marketplace dashboard.
+  </Accordion>
+  
+  <Accordion title="Stripe verification required">
+    If Stripe requests additional verification:
+    - Check your email for messages from Stripe
+    - Log in to your Stripe dashboard to see verification requirements
+    - Provide the requested documents or information
+    
+    This is a standard security measure for certain transaction volumes or business types.
+  </Accordion>
+</AccordionGroup>
+
+## Security and compliance
+
+The marketplace and Stripe ensure:
+
+- **PCI compliance**: Buyer payment information is handled securely by Stripe
+- **Data protection**: Sensitive financial data never touches marketplace servers
+- **Fraud prevention**: Stripe's fraud detection protects your account
+- **Regulatory compliance**: Stripe handles regional payment regulations
+
+<Info>
+  Your Stripe Account ID in the marketplace dashboard is read-only. All account management happens through Stripe's secure platform.
+</Info>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Add Products" icon="box" href="/guides/managing-products">
+    Start adding products to your storefront
+  </Card>
+  <Card title="Vendor Dashboard" icon="gauge" href="/guides/vendor-dashboard">
+    Explore your vendor dashboard features
+  </Card>
+</CardGroup>

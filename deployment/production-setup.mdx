@@ -1,0 +1,440 @@
+---
+title: Production Setup
+description: Complete guide to deploying the multi-vendor marketplace platform to production
+---
+
+This guide covers deploying your multi-vendor marketplace SaaS platform to production.
+
+## Prerequisites
+
+Before deploying to production, ensure you have:
+
+- Node.js 20.x or later installed
+- MongoDB database (Atlas or self-hosted)
+- Environment variables configured
+- Domain name and SSL certificate (for HTTPS)
+
+## Build Process
+
+The application uses Next.js 15 and requires a build step before deployment.
+
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+<Warning>
+  Use `npm ci` in production environments for deterministic builds based on package-lock.json.
+</Warning>
+
+### 2. Generate TypeScript Types
+
+Generate Payload CMS types before building:
+
+```bash
+npm run generate:types
+```
+
+This command runs `payload generate:types` and creates type definitions in `src/payload-types.ts` based on your collections.
+
+### 3. Build the Application
+
+```bash
+npm run build
+```
+
+This executes `next build` which:
+- Compiles TypeScript to JavaScript
+- Optimizes and bundles all application code
+- Generates static pages where possible
+- Creates optimized production assets
+- Builds the Payload CMS admin panel
+
+**Build output location:** `.next/` directory
+
+### 4. Start the Production Server
+
+```bash
+npm run start
+```
+
+This runs `next start` which serves the production build on port 3000 by default.
+
+## Deployment Options
+
+### Option 1: Vercel (Recommended for Next.js)
+
+Vercel is the easiest deployment option for Next.js applications.
+
+#### Setup
+
+1. Install Vercel CLI:
+
+```bash
+npm i -g vercel
+```
+
+2. Login to Vercel:
+
+```bash
+vercel login
+```
+
+3. Deploy:
+
+```bash
+vercel --prod
+```
+
+#### Environment Variables
+
+Add environment variables in the Vercel dashboard:
+
+1. Go to Project Settings > Environment Variables
+2. Add:
+   - `PAYLOAD_SECRET`
+   - `DATABASE_URI`
+   - `NEXT_PUBLIC_APP_URL`
+
+<Warning>
+  Set NEXT_PUBLIC_APP_URL to your production domain (e.g., https://yourapp.com) for proper tRPC SSR functionality.
+</Warning>
+
+#### vercel.json Configuration
+
+Create `vercel.json` in project root:
+
+```json
+{
+  "buildCommand": "npm run generate:types && npm run build",
+  "installCommand": "npm ci",
+  "framework": "nextjs"
+}
+```
+
+### Option 2: Docker Deployment
+
+For containerized deployments, create a Dockerfile:
+
+```dockerfile
+# Dockerfile
+FROM node:20-alpine AS base
+
+# Install dependencies only when needed
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Rebuild the source code only when needed
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# Set environment variables for build
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Generate types and build
+RUN npm run generate:types
+RUN npm run build
+
+# Production image
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+USER nextjs
+
+EXPOSE 3000
+
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+CMD ["node", "server.js"]
+```
+
+**Build and run:**
+
+```bash
+# Build image
+docker build -t marketplace:latest .
+
+# Run container
+docker run -p 3000:3000 \
+  -e PAYLOAD_SECRET="your-secret" \
+  -e DATABASE_URI="mongodb://..." \
+  -e NEXT_PUBLIC_APP_URL="https://yourapp.com" \
+  marketplace:latest
+```
+
+### Option 3: Traditional VPS/Server
+
+For deployment on a VPS (DigitalOcean, AWS EC2, etc.):
+
+#### 1. Server Setup
+
+```bash
+# Update system
+sudo apt update && sudo apt upgrade -y
+
+# Install Node.js 20.x
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Install PM2 for process management
+sudo npm install -g pm2
+```
+
+#### 2. Deploy Application
+
+```bash
+# Clone or copy your application
+git clone <your-repo>
+cd multi-vendor-marketplace
+
+# Install dependencies
+npm ci
+
+# Set environment variables
+cp .env.example .env
+nano .env  # Edit with your production values
+
+# Generate types and build
+npm run generate:types
+npm run build
+```
+
+#### 3. Run with PM2
+
+Create `ecosystem.config.js`:
+
+```javascript
+module.exports = {
+  apps: [
+    {
+      name: 'marketplace',
+      script: 'npm',
+      args: 'start',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3000
+      },
+      instances: 'max',
+      exec_mode: 'cluster'
+    }
+  ]
+};
+```
+
+**Start the application:**
+
+```bash
+pm2 start ecosystem.config.js
+pm2 save
+pm2 startup  # Enable auto-start on reboot
+```
+
+#### 4. Setup Nginx Reverse Proxy
+
+```nginx
+# /etc/nginx/sites-available/marketplace
+server {
+    listen 80;
+    server_name yourapp.com;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+**Enable site and setup SSL:**
+
+```bash
+sudo ln -s /etc/nginx/sites-available/marketplace /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+
+# Install SSL with Let's Encrypt
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d yourapp.com
+```
+
+## Post-Deployment Steps
+
+### 1. Database Setup
+
+Run migrations and seed initial data:
+
+```bash
+npm run db:fresh
+npm run db:seed
+```
+
+<Warning>
+  Only run `db:fresh` on initial setup. This command drops all existing data. See the Database Migration guide for production updates.
+</Warning>
+
+### 2. Create Admin User
+
+The seed script creates a default admin user:
+
+- **Email:** `ankit@admin.com`
+- **Password:** `Ankit@46`
+- **Role:** `super-admin`
+
+<Warning>
+  Change the default admin credentials immediately after first login for security.
+</Warning>
+
+### 3. Verify Deployment
+
+Check that all services are working:
+
+```bash
+# Check application is running
+curl https://yourapp.com
+
+# Check admin panel
+curl https://yourapp.com/admin
+
+# Check API
+curl https://yourapp.com/api/graphql
+```
+
+## Production Optimizations
+
+### Performance
+
+1. **Enable Caching**
+   - Configure CDN for static assets
+   - Use Redis for session storage
+   - Enable Next.js image optimization
+
+2. **Database Indexing**
+   - Add indexes on frequently queried fields
+   - Monitor slow queries with MongoDB profiling
+
+3. **Monitoring**
+   - Setup error tracking (Sentry, LogRocket)
+   - Configure performance monitoring
+   - Enable server monitoring (CPU, memory, disk)
+
+### Security
+
+1. **SSL/TLS**
+   - Enforce HTTPS only
+   - Use strong SSL configurations
+   - Enable HSTS headers
+
+2. **Environment**
+   - Never commit `.env` files
+   - Use secret management services
+   - Rotate secrets regularly
+
+3. **Database**
+   - Enable MongoDB authentication
+   - Use network restrictions
+   - Enable audit logging
+   - Regular backups
+
+4. **Application**
+   - Keep dependencies updated
+   - Enable rate limiting
+   - Configure CORS properly
+   - Use security headers
+
+### Scaling
+
+1. **Horizontal Scaling**
+   - Run multiple Next.js instances
+   - Use load balancer (Nginx, HAProxy, AWS ALB)
+   - Deploy MongoDB replica set
+
+2. **Vertical Scaling**
+   - Monitor resource usage
+   - Upgrade server specifications as needed
+
+## Troubleshooting
+
+### Build Failures
+
+**Type errors during build:**
+```bash
+# Regenerate types
+npm run generate:types
+```
+
+**Out of memory:**
+```bash
+# Increase Node.js memory
+NODE_OPTIONS="--max-old-space-size=4096" npm run build
+```
+
+### Runtime Issues
+
+**Application won't start:**
+- Verify environment variables are set
+- Check MongoDB connectivity
+- Review application logs
+
+**500 errors:**
+- Check server logs
+- Verify DATABASE_URI is correct
+- Ensure PAYLOAD_SECRET is set
+
+## Continuous Deployment
+
+Setup automated deployments with GitHub Actions:
+
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npm run generate:types
+      - run: npm run build
+      - name: Deploy to Vercel
+        run: vercel --prod --token=${{ secrets.VERCEL_TOKEN }}
+```
+
+## Next Steps
+
+- [Database Migration](/deployment/database-migration) - Learn about database management
+- [Environment Variables](/deployment/environment-variables) - Complete environment variable reference
+- Monitor your application performance
+- Setup automated backups
+- Configure monitoring and alerting

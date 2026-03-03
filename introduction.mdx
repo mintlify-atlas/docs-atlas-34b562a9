@@ -1,0 +1,262 @@
+---
+title: Multi-Vendor Marketplace Platform
+description: A powerful multi-tenant e-commerce platform that enables creators to sell digital products through customizable storefronts with Stripe Connect integration.
+---
+
+<img
+  className="block dark:hidden"
+  src="/images/hero-light.svg"
+  alt="Hero Light"
+/>
+<img
+  className="hidden dark:block"
+  src="/images/hero-dark.svg"
+  alt="Hero Dark"
+/>
+
+## Build Your Digital Marketplace Empire
+
+Welcome to the next generation of multi-vendor e-commerce. This platform enables you to launch a complete digital marketplace where thousands of creators can open their own storefronts, sell products, and manage their business—all while you earn automatic platform fees on every transaction.
+
+Built with **Next.js 15**, **Payload CMS**, and **Stripe Connect**, this is a production-ready foundation for building the next Gumroad, Creative Market, or Envato.
+
+<CardGroup cols={2}>
+  <Card
+    title="Quickstart Guide"
+    icon="rocket"
+    href="/quickstart"
+  >
+    Get your marketplace up and running in 10 minutes. Create your first vendor storefront and add products.
+  </Card>
+  <Card
+    title="Installation & Setup"
+    icon="screwdriver-wrench"
+    href="/installation"
+  >
+    Complete installation guide with environment configuration, database setup, and Stripe Connect integration.
+  </Card>
+  <Card
+    title="API Reference"
+    icon="code"
+    href="/api/overview"
+  >
+    Explore the tRPC API with type-safe procedures for products, tenants, checkout, and more.
+  </Card>
+  <Card
+    title="Architecture Overview"
+    icon="diagram-project"
+    href="/concepts/architecture"
+  >
+    Deep dive into the multi-tenant architecture, subdomain routing, and data isolation strategies.
+  </Card>
+</CardGroup>
+
+## Core Features
+
+<AccordionGroup>
+  <Accordion icon="building" title="Multi-Tenant Architecture">
+    Each vendor operates in a completely isolated environment with their own:
+    - Dedicated subdomain (e.g., `creator.yourmarketplace.com`)
+    - Isolated product catalog and customer data
+    - Separate Stripe Connect account for payments
+    - Custom branding and storefront design
+    
+    Built on Payload CMS's official `@payloadcms/plugin-multi-tenant` for enterprise-grade tenant isolation.
+  </Accordion>
+
+  <Accordion icon="credit-card" title="Stripe Connect Integration">
+    Full-featured payment infrastructure with:
+    - Automatic vendor onboarding to Stripe Connect
+    - Platform fee collection on every transaction
+    - Direct payouts to vendor bank accounts
+    - PCI-compliant checkout flow
+    - Support for multiple currencies
+    
+    Each tenant gets their own `stripeAccountId` managed automatically by the platform.
+  </Accordion>
+
+  <Accordion icon="rocket" title="Modern Tech Stack">
+    Built with cutting-edge technologies:
+    - **Next.js 15** with App Router for blazing-fast performance
+    - **Payload CMS 3.x** for flexible content management
+    - **tRPC** for end-to-end type safety
+    - **MongoDB** via Mongoose adapter for scalable data storage
+    - **shadcn/ui** components styled with Tailwind CSS v4
+    - **Zod** for runtime schema validation
+  </Accordion>
+
+  <Accordion icon="gauge-high" title="Developer Experience">
+    Optimized for productivity:
+    - Full TypeScript support with auto-generated types from Payload
+    - Type-safe API calls with tRPC and React Query
+    - Hot module replacement for instant feedback
+    - Comprehensive data validation with Zod schemas
+    - Modular architecture with feature-based folder structure
+  </Accordion>
+</AccordionGroup>
+
+## Platform Capabilities
+
+<CardGroup cols={3}>
+  <Card title="Vendor Management" icon="store">
+    Complete vendor lifecycle from registration to storefront customization
+  </Card>
+  <Card title="Product Catalog" icon="boxes-stacked">
+    Rich product management with categories, tags, pricing, and media uploads
+  </Card>
+  <Card title="Secure Checkout" icon="lock">
+    Cart management, Stripe payments, and automatic fee calculations
+  </Card>
+  <Card title="Admin Dashboard" icon="gauge">
+    Powerful Payload CMS admin for platform-wide management
+  </Card>
+  <Card title="Role-Based Access" icon="users-gear">
+    Granular permissions for super-admins, vendors, and customers
+  </Card>
+  <Card title="API-First Design" icon="plug">
+    GraphQL and tRPC APIs for building mobile apps and integrations
+  </Card>
+</CardGroup>
+
+## Technical Highlights
+
+<CodeGroup>
+
+```typescript Multi-Tenant Configuration
+// src/payload.config.ts
+import { multiTenantPlugin } from "@payloadcms/plugin-multi-tenant";
+
+export default buildConfig({
+  collections: [Users, Media, Categories, Products, Tags, Tenants],
+  plugins: [
+    multiTenantPlugin<Config>({
+      collections: {
+        products: {},  // Products are tenant-scoped
+      },
+      tenantsArrayField: {
+        includeDefaultField: false,
+      },
+      userHasAccessToAllTenants: (user) =>
+        Boolean(user?.roles?.includes("super-admin")),
+    }),
+  ],
+});
+```
+
+```typescript Tenant Schema
+// src/collections/Tenants.ts
+export const Tenants: CollectionConfig = {
+  slug: "tenants",
+  fields: [
+    {
+      name: "name",
+      type: "text",
+      required: true,
+      label: "Store Name",
+    },
+    {
+      name: "slug",
+      type: "text",
+      unique: true,
+      required: true,
+      // Powers subdomain routing: [slug].market.com
+    },
+    {
+      name: "stripeAccountId",
+      type: "text",
+      required: true,
+      admin: { readOnly: true },
+    },
+    {
+      name: "stripeDetailsSubmitted",
+      type: "checkbox",
+    },
+  ],
+};
+```
+
+```typescript Type-Safe API
+// src/trpc/routers/_app.ts
+import { createTRPCRouter } from "../init";
+
+export const appRouter = createTRPCRouter({
+  auth: authRouter,
+  tenants: tenantsRouter,
+  products: productsRouter,
+  checkout: checkoutRouter,
+  categories: categoriesRouter,
+  tags: tagsRouter,
+});
+
+export type AppRouter = typeof appRouter;
+```
+
+</CodeGroup>
+
+## What Makes This Different?
+
+<Note>
+  **Production-Ready**: This isn't a tutorial project—it's a complete platform with real-world features like Stripe Connect integration, multi-tenant data isolation, and enterprise-grade architecture.
+</Note>
+
+<CardGroup cols={2}>
+  <Card title="True Multi-Tenancy" icon="building-shield">
+    Not just user accounts—full tenant isolation with dedicated subdomains, separate Stripe accounts, and scoped data access
+  </Card>
+  <Card title="Monetization Built-In" icon="dollar-sign">
+    Platform fee collection is baked into the architecture, not an afterthought
+  </Card>
+  <Card title="Vendor-First Design" icon="handshake">
+    Every feature is designed around empowering vendors to run their business independently
+  </Card>
+  <Card title="Extensible Foundation" icon="puzzle-piece">
+    Modular architecture makes it easy to add ratings, subscriptions, analytics, and more
+  </Card>
+</CardGroup>
+
+## Perfect For
+
+- **SaaS Founders** building a marketplace business
+- **Agencies** delivering multi-vendor platforms to clients
+- **Developers** learning modern full-stack architecture
+- **Entrepreneurs** launching a digital product marketplace
+
+## Next Steps
+
+<Steps>
+  <Step title="Quick Start">
+    Follow the [Quickstart Guide](/quickstart) to see the platform in action within 10 minutes
+  </Step>
+  <Step title="Full Installation">
+    Set up your development environment with the [Installation Guide](/installation)
+  </Step>
+  <Step title="Explore the Code">
+    Clone the repository and explore the modular architecture
+  </Step>
+  <Step title="Deploy to Production">
+    Configure your production environment and launch your marketplace
+  </Step>
+</Steps>
+
+<Warning>
+  **Stripe Connect Setup Required**: To accept payments, you'll need a Stripe account and must configure Stripe Connect. See the [Installation Guide](/installation#stripe-configuration) for details.
+</Warning>
+
+---
+
+<CardGroup cols={2}>
+  <Card
+    title="View on GitHub"
+    icon="github"
+    href="https://github.com/yourusername/multi-vendor-marketplace"
+  >
+    Star the repository and contribute to the project
+  </Card>
+  <Card
+    title="Get Support"
+    icon="discord"
+    href="https://discord.gg/yourserver"
+  >
+    Join our community for help and discussion
+  </Card>
+</CardGroup>

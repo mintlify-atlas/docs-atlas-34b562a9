@@ -1,0 +1,468 @@
+---
+title: tRPC API
+description: Understanding the type-safe tRPC API layer and creating procedures
+---
+
+The platform uses **tRPC v11** to provide end-to-end type-safe APIs between the server and client. All API logic is organized into routers with procedures that leverage Payload CMS for data access.
+
+## Architecture
+
+tRPC sits between Next.js and Payload CMS:
+
+```
+Client (React) → tRPC Client → tRPC Server → Payload CMS → MongoDB
+```
+
+## Configuration
+
+### tRPC Initialization
+
+```typescript
+// src/trpc/init.ts
+import { initTRPC } from "@trpc/server";
+import { getPayload } from "payload";
+import config from "@payload-config";
+import superjson from "superjson";
+import { cache } from "react";
+
+export const createTRPCContext = cache(async () => {
+  return { userId: "user_123" };
+});
+
+const t = initTRPC.create({
+  transformer: superjson,  // Handles Date, Map, Set, etc.
+});
+
+export const createTRPCRouter = t.router;
+export const createCallerFactory = t.createCallerFactory;
+
+// Base procedure with Payload DB access
+export const baseProcedure = t.procedure.use(async ({ next }) => {
+  const payload = await getPayload({ config });
+  return next({ ctx: { db: payload } });
+});
+```
+
+### App Router
+
+All routers are combined in the app router:
+
+```typescript
+// src/trpc/routers/_app.ts
+import { createTRPCRouter } from "../init";
+
+import { authRouter } from "@/modules/auth/server/procedures";
+import { tagsRouter } from "@/modules/tags/server/procedures";
+import { tenantsRouter } from "@/modules/tenants/server/procedures";
+import { productsRouter } from "@/modules/products/server/procedures";
+import { checkoutRouter } from "@/modules/checkout/server/procedures";
+import { categoriesRouter } from "@/modules/categories/server/procedures";
+
+export const appRouter = createTRPCRouter({
+  auth: authRouter,
+  tags: tagsRouter,
+  tenants: tenantsRouter,
+  checkout: checkoutRouter,
+  products: productsRouter,
+  categories: categoriesRouter,
+});
+
+export type AppRouter = typeof appRouter;
+```
+
+### Next.js API Route
+
+```typescript
+// src/app/(app)/api/trpc/[trpc]/route.ts
+import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
+import { createTRPCContext } from "@/trpc/init";
+import { appRouter } from "@/trpc/routers/_app";
+
+const handler = (req: Request) =>
+  fetchRequestHandler({
+    endpoint: "/api/trpc",
+    req,
+    router: appRouter,
+    createContext: createTRPCContext,
+  });
+
+export { handler as GET, handler as POST };
+```
+
+## Creating Procedures
+
+Procedures are defined in module-specific files at `src/modules/[module]/server/procedures.ts`.
+
+### Query Procedure Example
+
+```typescript
+// src/modules/tenants/server/procedures.ts
+import z from "zod";
+import { TRPCError } from "@trpc/server";
+import { Media, Tenant } from "@/payload-types";
+import { baseProcedure, createTRPCRouter } from "@/trpc/init";
+
+export const tenantsRouter = createTRPCRouter({
+  getOne: baseProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const tenantsData = await ctx.db.find({
+        collection: "tenants",
+        depth: 1,
+        where: {
+          slug: {
+            equals: input.slug,
+          },
+        },
+        limit: 1,
+        pagination: false,
+      });
+
+      const tenant = tenantsData.docs[0];
+
+      if (!tenant) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Tenant not found",
+        });
+      }
+
+      return tenant as Tenant & { image: Media | null };
+    }),
+});
+```
+
+### Complex Query Example
+
+```typescript
+// src/modules/products/server/procedures.ts
+import z from "zod";
+import { Sort, Where } from "payload";
+import { baseProcedure, createTRPCRouter } from "@/trpc/init";
+
+export const productsRouter = createTRPCRouter({
+  getMany: baseProcedure
+    .input(
+      z.object({
+        cursor: z.number().default(1),
+        limit: z.number().default(12),
+        category: z.string().nullable().optional(),
+        minPrice: z.string().nullable().optional(),
+        maxPrice: z.string().nullable().optional(),
+        tags: z.array(z.string()).nullable().optional(),
+        sort: z.enum(["curated", "hot_and_new", "trending"]).nullable().optional(),
+        tenantSlug: z.string().nullable().optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const where: Where = {};
+      let sort: Sort = "-createdAt";
+
+      // Apply sorting
+      if (input.sort === "curated") sort = "-createdAt";
+      if (input.sort === "hot_and_new") sort = "+createdAt";
+      if (input.sort === "trending") sort = "-createdAt";
+
+      // Price filtering
+      if (input.minPrice && input.maxPrice) {
+        where.price = {
+          greater_than_equal: input.minPrice,
+          less_than_equal: input.maxPrice,
+        };
+      } else if (input.minPrice) {
+        where.price = {
+          greater_than_equal: input.minPrice,
+        };
+      } else if (input.maxPrice) {
+        where.price = {
+          less_than_equal: input.maxPrice,
+        };
+      }
+
+      // Tenant filtering
+      if (input.tenantSlug) {
+        where["tenant.slug"] = {
+          equals: input.tenantSlug,
+        };
+      }
+
+      // Tag filtering
+      if (input.tags && input.tags.length > 0) {
+        where["tags.name"] = {
+          in: input.tags,
+        };
+      }
+
+      const data = await ctx.db.find({
+        collection: "products",
+        depth: 2,  // Populate nested relationships
+        where,
+        sort,
+        page: input.cursor,
+        limit: input.limit,
+      });
+
+      return {
+        ...data,
+        docs: data.docs.map((doc) => ({
+          ...doc,
+          image: doc.image as Media | null,
+          tenant: doc.tenant as Tenant & { image: Media | null },
+        })),
+      };
+    }),
+});
+```
+
+### Fetching Related Data
+
+```typescript
+// src/modules/categories/server/procedures.ts
+import { Category } from "@/payload-types";
+import { baseProcedure, createTRPCRouter } from "@/trpc/init";
+
+export const categoriesRouter = createTRPCRouter({
+  getMany: baseProcedure.query(async ({ ctx }) => {
+    const data = await ctx.db.find({
+      collection: "categories",
+      depth: 1,  // Populate subcategories
+      pagination: false,
+      where: {
+        parent: {
+          exists: false,  // Only top-level categories
+        },
+      },
+      sort: "name",
+    });
+
+    // Format subcategories
+    const formattedData = data.docs.map((doc) => ({
+      ...doc,
+      subcategories: (doc.subcategories?.docs ?? []).map((doc) => ({
+        ...(doc as Category),
+      })),
+    }));
+
+    return formattedData;
+  }),
+});
+```
+
+## Client Usage
+
+### Query Client Setup
+
+```typescript
+// src/trpc/query-client.ts
+import {
+  defaultShouldDehydrateQuery,
+  QueryClient,
+} from "@tanstack/react-query";
+import superjson from "superjson";
+
+export function makeQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 30 * 1000,  // 30 seconds
+      },
+      dehydrate: {
+        serializeData: superjson.serialize,
+        shouldDehydrateQuery: (query) =>
+          defaultShouldDehydrateQuery(query) ||
+          query.state.status === "pending",
+      },
+      hydrate: {
+        deserializeData: superjson.deserialize,
+      },
+    },
+  });
+}
+```
+
+### Using tRPC in Components
+
+```typescript
+import { api } from "@/trpc/client";
+
+function ProductList({ tenantSlug }: { tenantSlug: string }) {
+  const { data, isLoading } = api.products.getMany.useQuery({
+    tenantSlug,
+    limit: 12,
+    cursor: 1,
+  });
+
+  if (isLoading) return <div>Loading...</div>;
+
+  return (
+    <div>
+      {data?.docs.map((product) => (
+        <div key={product.id}>
+          <h3>{product.name}</h3>
+          <p>{product.price} INR</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+### Calling Multiple Procedures
+
+```typescript
+function StorePage({ slug }: { slug: string }) {
+  const tenant = api.tenants.getOne.useQuery({ slug });
+  const products = api.products.getMany.useQuery({ tenantSlug: slug });
+  const categories = api.categories.getMany.useQuery();
+
+  // Handle loading and data...
+}
+```
+
+## Available Routers
+
+<CardGroup cols={2}>
+  <Card title="auth" icon="lock">
+    User authentication and session management
+  </Card>
+  <Card title="categories" icon="folder">
+    Fetch categories and subcategories
+  </Card>
+  <Card title="checkout" icon="cart-shopping">
+    Shopping cart and order processing
+  </Card>
+  <Card title="products" icon="box">
+    Product listing, filtering, and details
+  </Card>
+  <Card title="tags" icon="tag">
+    Product tag management
+  </Card>
+  <Card title="tenants" icon="store">
+    Vendor store information
+  </Card>
+</CardGroup>
+
+## Payload Query Operators
+
+Common operators used in `where` clauses:
+
+| Operator | Usage | Example |
+|----------|-------|--------|
+| `equals` | Exact match | `slug: { equals: "electronics" }` |
+| `not_equals` | Not equal | `status: { not_equals: "draft" }` |
+| `greater_than` | Greater than | `price: { greater_than: 100 }` |
+| `greater_than_equal` | Greater than or equal | `price: { greater_than_equal: 100 }` |
+| `less_than` | Less than | `stock: { less_than: 10 }` |
+| `less_than_equal` | Less than or equal | `stock: { less_than_equal: 10 }` |
+| `in` | Value in array | `category: { in: ["id1", "id2"] }` |
+| `exists` | Field exists | `parent: { exists: false }` |
+
+## Depth Parameter
+
+Control relationship population with the `depth` parameter:
+
+```typescript
+// depth: 0 (default) - Returns IDs only
+{ category: "507f1f77bcf86cd799439011" }
+
+// depth: 1 - Populates first level
+{ category: { id: "...", name: "Electronics", slug: "electronics" } }
+
+// depth: 2 - Populates nested relationships
+{ 
+  category: { 
+    id: "...", 
+    name: "Electronics",
+    parent: { id: "...", name: "All" }
+  } 
+}
+```
+
+## Error Handling
+
+```typescript
+import { TRPCError } from "@trpc/server";
+
+if (!found) {
+  throw new TRPCError({
+    code: "NOT_FOUND",
+    message: "Resource not found",
+  });
+}
+
+// Available error codes:
+// - BAD_REQUEST
+// - UNAUTHORIZED
+// - FORBIDDEN
+// - NOT_FOUND
+// - TIMEOUT
+// - CONFLICT
+// - INTERNAL_SERVER_ERROR
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Input Validation">
+    Always use Zod schemas for input validation. This ensures type safety and runtime validation.
+    
+    ```typescript
+    .input(
+      z.object({
+        id: z.string().min(1),
+        limit: z.number().min(1).max(100).default(12),
+      })
+    )
+    ```
+  </Accordion>
+  
+  <Accordion title="Type Assertions">
+    Cast Payload responses to proper types for better type inference:
+    
+    ```typescript
+    return product as Product & { 
+      image: Media | null,
+      tenant: Tenant 
+    };
+    ```
+  </Accordion>
+  
+  <Accordion title="Pagination">
+    Use cursor-based pagination for better performance:
+    
+    ```typescript
+    .input(z.object({
+      cursor: z.number().default(1),
+      limit: z.number().default(12),
+    }))
+    .query(async ({ ctx, input }) => {
+      return await ctx.db.find({
+        page: input.cursor,
+        limit: input.limit,
+      });
+    })
+    ```
+  </Accordion>
+  
+  <Accordion title="Query Optimization">
+    - Set appropriate `depth` to avoid over-fetching
+    - Use `pagination: false` only when necessary
+    - Index frequently queried fields in Payload
+    - Limit result sets with appropriate defaults
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Payload CMS" icon="database" href="/development/payload-cms">
+    Learn about Payload queries and collections
+  </Card>
+  <Card title="Database Schema" icon="table" href="/development/database-schema">
+    Understand data relationships
+  </Card>
+</CardGroup>

@@ -1,80 +1,514 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get your multi-vendor marketplace running in 10 minutes. Create your first vendor account, set up a storefront, and add products.
 ---
 
-## Get started in three steps
+## Get Started in 10 Minutes
 
-Get your documentation site running locally and make your first customization.
-
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+This quickstart will take you from zero to a functioning multi-vendor marketplace with your first vendor storefront and product. Perfect for evaluating the platform or rapid prototyping.
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  This guide uses simplified setup for quick evaluation. For production deployment, see the [Installation Guide](/installation).
 </Note>
+
+## Prerequisites
+
+Before you begin, ensure you have:
+
+<CardGroup cols={2}>
+  <Card title="Node.js 20+" icon="node">
+    Download from [nodejs.org](https://nodejs.org)
+  </Card>
+  <Card title="MongoDB" icon="database">
+    Local instance or [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) account
+  </Card>
+  <Card title="Git" icon="git-alt">
+    For cloning the repository
+  </Card>
+  <Card title="Code Editor" icon="code">
+    VS Code recommended
+  </Card>
+</CardGroup>
+
+## Step 1: Clone and Install
+
+<Steps>
+  <Step title="Clone the Repository">
+    ```bash
+    git clone https://github.com/yourusername/multi-vendor-marketplace.git
+    cd multi-vendor-marketplace
+    ```
+  </Step>
+
+  <Step title="Install Dependencies">
+    ```bash
+    npm install
+    ```
+    
+    This installs all required packages including:
+    - Next.js 15 and React 19
+    - Payload CMS and multi-tenant plugin
+    - tRPC and React Query
+    - shadcn/ui components
+    - Stripe SDK (payments handled in production)
+  </Step>
+
+  <Step title="Set Up Environment Variables">
+    Create a `.env` file in the root directory:
+    
+    ```bash .env
+    # Database
+    DATABASE_URI=mongodb://localhost:27017/marketplace
+    
+    # Payload CMS
+    PAYLOAD_SECRET=your-random-secret-key-here
+    
+    # Next.js
+    NEXT_PUBLIC_SERVER_URL=http://localhost:3000
+    
+    # Stripe (optional for quickstart)
+    # STRIPE_SECRET_KEY=sk_test_...
+    # NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+    ```
+    
+    <Warning>
+      Generate a secure `PAYLOAD_SECRET` using: `openssl rand -base64 32`
+    </Warning>
+  </Step>
+</Steps>
+
+## Step 2: Initialize the Database
+
+<Steps>
+  <Step title="Run Database Migrations">
+    ```bash
+    npm run db:fresh
+    ```
+    
+    This creates the necessary collections in MongoDB:
+    - `users` - User accounts and authentication
+    - `tenants` - Vendor storefronts
+    - `products` - Product catalog
+    - `categories` - Product organization
+    - `tags` - Product tagging
+    - `media` - Image and file uploads
+  </Step>
+
+  <Step title="Seed Sample Data (Optional)">
+    ```bash
+    npm run db:seed
+    ```
+    
+    This populates your database with:
+    - Sample categories (Electronics, Fashion, Digital Products)
+    - A demo vendor account
+    - Sample products
+    - Test tags
+  </Step>
+</Steps>
+
+## Step 3: Start the Development Server
+
+```bash
+npm run dev
+```
+
+Your marketplace is now running at:
+- **Main Platform**: [http://localhost:3000](http://localhost:3000)
+- **Admin Dashboard**: [http://localhost:3000/admin](http://localhost:3000/admin)
+- **API Endpoint**: [http://localhost:3000/api/trpc](http://localhost:3000/api/trpc)
+- **GraphQL Playground**: [http://localhost:3000/api/graphql-playground](http://localhost:3000/api/graphql-playground)
+
+<Check>
+  You should see the marketplace homepage with categories and featured products!
+</Check>
+
+## Step 4: Create Your First Vendor Account
+
+<Steps>
+  <Step title="Navigate to Sign Up">
+    Visit [http://localhost:3000/sign-up](http://localhost:3000/sign-up)
+  </Step>
+
+  <Step title="Register a New Vendor">
+    Fill in the registration form:
+    
+    <CodeGroup>
+    ```typescript Form Fields
+    {
+      username: "mystore",        // Your subdomain slug
+      email: "vendor@example.com",
+      password: "SecurePass123!"   // Min 8 characters
+    }
+    ```
+    </CodeGroup>
+    
+    <Note>
+      The `username` field becomes your storefront subdomain. For example, `mystore` creates `mystore.market.com` (in production).
+    </Note>
+  </Step>
+
+  <Step title="Automatic Tenant Creation">
+    Upon registration, the platform automatically:
+    
+    1. Creates your user account
+    2. Generates a tenant record with your username as the slug
+    3. Creates a Stripe Connect account ID (placeholder in dev mode)
+    4. Associates your user with the tenant
+    
+    Here's what happens behind the scenes:
+    
+    ```typescript src/modules/auth/server/procedures.ts
+    export const authRouter = createTRPCRouter({
+      register: baseProcedure
+        .input(registerSchema)
+        .mutation(async ({ ctx, input }) => {
+          // Create user account
+          const user = await ctx.db.create({
+            collection: "users",
+            data: {
+              email: input.email,
+              password: input.password,
+              username: input.username,
+              roles: ["user"],
+            },
+          });
+          
+          // Create tenant/storefront
+          const tenant = await ctx.db.create({
+            collection: "tenants",
+            data: {
+              name: `${input.username}'s Store`,
+              slug: input.username,
+              stripeAccountId: `acct_${generateId()}`, // Real Stripe ID in prod
+              stripeDetailsSubmitted: false,
+            },
+          });
+          
+          // Link user to tenant
+          await ctx.db.update({
+            collection: "users",
+            id: user.id,
+            data: {
+              tenants: [{ tenant: tenant.id }],
+            },
+          });
+          
+          return { user, tenant };
+        }),
+    });
+    ```
+  </Step>
+</Steps>
+
+## Step 5: Access the Admin Dashboard
+
+<Steps>
+  <Step title="Navigate to Admin">
+    Go to [http://localhost:3000/admin](http://localhost:3000/admin)
+  </Step>
+
+  <Step title="Sign In">
+    Use the credentials you just created:
+    - Email: `vendor@example.com`
+    - Password: `SecurePass123!`
+  </Step>
+
+  <Step title="Explore the Dashboard">
+    The Payload CMS admin gives you full control over:
+    
+    <CardGroup cols={2}>
+      <Card title="Products" icon="box">
+        Manage your product catalog
+      </Card>
+      <Card title="Categories" icon="folder-tree">
+        Organize products into categories
+      </Card>
+      <Card title="Media" icon="image">
+        Upload and manage images
+      </Card>
+      <Card title="Tenants" icon="store">
+        View your storefront settings
+      </Card>
+    </CardGroup>
+  </Step>
+</Steps>
+
+## Step 6: Create Your First Product
+
+<Steps>
+  <Step title="Navigate to Products">
+    In the admin dashboard, click **Products** in the sidebar, then **Create New**
+  </Step>
+
+  <Step title="Fill in Product Details">
+    <CodeGroup>
+    ```json Product Form
+    {
+      "name": "My Awesome E-Book",
+      "description": "A comprehensive guide to building marketplaces",
+      "price": 2999,  // in INR (₹29.99)
+      "category": "Digital Products",
+      "tags": ["ebook", "tutorial", "programming"],
+      "refundPolicy": "30-day"
+    }
+    ```
+    </CodeGroup>
+    
+    <Note>
+      Prices are stored in the smallest currency unit (paise for INR, cents for USD)
+    </Note>
+  </Step>
+
+  <Step title="Upload Product Image">
+    1. Click the **Image** upload field
+    2. Select an image from your computer
+    3. The image is automatically processed and stored in the `media` collection
+  </Step>
+
+  <Step title="Save and Publish">
+    Click **Save** at the top right. Your product is now live!
+  </Step>
+</Steps>
+
+## Step 7: View Your Storefront
+
+<Steps>
+  <Step title="Access Your Vendor Storefront">
+    In development, tenant storefronts are accessed via path:
+    
+    ```
+    http://localhost:3000/tenants/mystore
+    ```
+    
+    Replace `mystore` with your username slug.
+  </Step>
+
+  <Step title="See Your Product Live">
+    Your storefront displays:
+    - Vendor branding and logo
+    - Product grid with images and prices
+    - Category filters
+    - Product search
+    
+    Click on your product to see the detail page with:
+    - Full description
+    - Pricing
+    - Add to cart button
+    - Vendor information
+  </Step>
+</Steps>
+
+## Step 8: Test the Checkout Flow
+
+<Warning>
+  Stripe integration requires additional configuration for actual payments. This step demonstrates the cart and checkout UI.
+</Warning>
+
+<Steps>
+  <Step title="Add Product to Cart">
+    On any product page, click **Add to Cart**. The cart state is managed with Zustand:
+    
+    ```typescript src/modules/checkout/store/use-cart-store.ts
+    import { create } from "zustand";
+    import { persist } from "zustand/middleware";
+    
+    export const useCartStore = create(
+      persist(
+        (set) => ({
+          items: [],
+          addItem: (product) =>
+            set((state) => ({
+              items: [...state.items, product],
+            })),
+          removeItem: (productId) =>
+            set((state) => ({
+              items: state.items.filter((item) => item.id !== productId),
+            })),
+        }),
+        { name: "cart-storage" }
+      )
+    );
+    ```
+  </Step>
+
+  <Step title="View Cart">
+    Click the cart icon in the header to see:
+    - Cart items with thumbnails
+    - Quantity controls
+    - Subtotal calculation
+    - Platform fee preview
+    - Proceed to checkout button
+  </Step>
+
+  <Step title="Navigate to Checkout">
+    Visit the checkout page:
+    ```
+    http://localhost:3000/tenants/mystore/checkout
+    ```
+    
+    The checkout page includes:
+    - Order summary
+    - Stripe payment form (requires configuration)
+    - Platform fee breakdown
+    - Vendor payout calculation
+  </Step>
+</Steps>
+
+## Understanding the Architecture
+
+Now that you have a running marketplace, let's understand how it works:
+
+<AccordionGroup>
+  <Accordion icon="database" title="Multi-Tenant Data Isolation">
+    Products are automatically scoped to tenants using Payload's multi-tenant plugin:
+    
+    ```typescript src/payload.config.ts
+    multiTenantPlugin<Config>({
+      collections: {
+        products: {},  // Products inherit tenant scoping
+      },
+      userHasAccessToAllTenants: (user) =>
+        Boolean(user?.roles?.includes("super-admin")),
+    })
+    ```
+    
+    When a vendor creates a product, it's automatically associated with their tenant. Queries are automatically filtered:
+    
+    ```typescript
+    // Automatically filtered to current user's tenant
+    const products = await payload.find({
+      collection: "products",
+    });
+    ```
+  </Accordion>
+
+  <Accordion icon="route" title="Subdomain Routing">
+    In production, subdomains are handled by middleware:
+    
+    ```typescript middleware.ts (production)
+    export function middleware(request: NextRequest) {
+      const hostname = request.headers.get("host");
+      const subdomain = hostname?.split(".")[0];
+      
+      if (subdomain && subdomain !== "www") {
+        // Rewrite to tenant route
+        return NextResponse.rewrite(
+          new URL(`/tenants/${subdomain}${request.nextUrl.pathname}`, request.url)
+        );
+      }
+    }
+    ```
+    
+    In development, access via `/tenants/[slug]` paths.
+  </Accordion>
+
+  <Accordion icon="credit-card" title="Stripe Connect Flow">
+    The platform uses Stripe Connect for multi-vendor payments:
+    
+    1. **Onboarding**: Vendors complete Stripe Connect onboarding
+    2. **Payment**: Customer pays through platform
+    3. **Fee Collection**: Platform fee is automatically deducted
+    4. **Payout**: Remaining amount goes to vendor's bank account
+    
+    ```typescript
+    const tenant = await payload.findByID({
+      collection: "tenants",
+      id: tenantId,
+    });
+    
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: 2999,
+      currency: "inr",
+      application_fee_amount: 299, // 10% platform fee
+      transfer_data: {
+        destination: tenant.stripeAccountId,
+      },
+    });
+    ```
+  </Accordion>
+
+  <Accordion icon="arrows-split-up-and-left" title="Type-Safe API with tRPC">
+    All API calls are type-safe from client to server:
+    
+    ```typescript Client Usage
+    "use client";
+    import { useTRPC } from "@/trpc/client";
+    
+    export function ProductList() {
+      const trpc = useTRPC();
+      
+      const { data: products } = trpc.products.getMany.useQuery({
+        limit: 12,
+        category: "digital-products",
+      });
+      
+      // products is fully typed!
+      return products?.docs.map((product) => (
+        <ProductCard key={product.id} product={product} />
+      ));
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Full Installation" icon="gear" href="/installation">
+    Configure Stripe Connect, set up subdomains, and deploy to production
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/overview">
+    Explore all available tRPC procedures and GraphQL queries
+  </Card>
+  <Card title="UI Components" icon="palette" href="/development/ui-components">
+    Customize the storefront design with shadcn/ui components
+  </Card>
+  <Card title="Deployment" icon="cloud" href="/deployment/production-setup">
+    Deploy to Vercel, configure DNS, and launch your marketplace
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion icon="circle-exclamation" title="MongoDB Connection Failed">
+    **Error**: `MongooseServerSelectionError: connect ECONNREFUSED`
+    
+    **Solutions**:
+    - Ensure MongoDB is running: `mongod` or check Docker container
+    - Verify `DATABASE_URI` in `.env` matches your MongoDB connection string
+    - For MongoDB Atlas, check IP whitelist and credentials
+  </Accordion>
+
+  <Accordion icon="circle-exclamation" title="Port Already in Use">
+    **Error**: `Error: listen EADDRINUSE: address already in use :::3000`
+    
+    **Solutions**:
+    - Kill the process using port 3000: `lsof -ti:3000 | xargs kill`
+    - Or use a different port: `PORT=3001 npm run dev`
+  </Accordion>
+
+  <Accordion icon="circle-exclamation" title="Type Generation Errors">
+    **Error**: TypeScript errors about missing `payload-types.ts`
+    
+    **Solution**:
+    ```bash
+    npm run generate:types
+    ```
+    This generates TypeScript types from your Payload collections.
+  </Accordion>
+
+  <Accordion icon="circle-exclamation" title="Admin Login Issues">
+    **Error**: Cannot access `/admin` or login fails
+    
+    **Solutions**:
+    - Ensure you registered via `/sign-up` first
+    - Check that `PAYLOAD_SECRET` is set in `.env`
+    - Clear browser cookies and try again
+  </Accordion>
+</AccordionGroup>
+
+<Check>
+  **You're all set!** You now have a fully functional multi-vendor marketplace running locally. Explore the codebase, add more products, and check out the [Installation Guide](/installation) when you're ready to deploy.
+</Check>

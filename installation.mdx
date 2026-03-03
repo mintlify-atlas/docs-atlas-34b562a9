@@ -1,0 +1,735 @@
+---
+title: Installation & Setup
+description: Complete guide to installing and configuring your multi-vendor marketplace platform for development and production environments.
+---
+
+## Overview
+
+This comprehensive guide covers everything needed to set up your multi-vendor marketplace platform from scratch, including database configuration, Stripe Connect integration, subdomain routing, and production deployment.
+
+<Note>
+  For a quick evaluation, see the [Quickstart Guide](/quickstart). This guide is for complete production setup.
+</Note>
+
+## System Requirements
+
+<CardGroup cols={2}>
+  <Card title="Node.js 20+" icon="node">
+    LTS version recommended
+  </Card>
+  <Card title="MongoDB 6.0+" icon="database">
+    Local or cloud instance
+  </Card>
+  <Card title="Git" icon="git-alt">
+    For version control
+  </Card>
+  <Card title="Stripe Account" icon="stripe">
+    For payment processing
+  </Card>
+</CardGroup>
+
+### Recommended Development Environment
+
+- **OS**: macOS, Linux, or Windows with WSL2
+- **Memory**: 4GB RAM minimum, 8GB recommended
+- **Editor**: VS Code with recommended extensions
+- **Terminal**: Modern shell (zsh, bash)
+
+## Step 1: Clone the Repository
+
+<Steps>
+  <Step title="Clone from GitHub">
+    ```bash
+    git clone https://github.com/yourusername/multi-vendor-marketplace.git
+    cd multi-vendor-marketplace
+    ```
+  </Step>
+
+  <Step title="Verify Node.js Version">
+    ```bash
+    node --version  # Should be v20.x or higher
+    npm --version   # Should be v10.x or higher
+    ```
+    
+    <Warning>
+      Next.js 15 requires Node.js 20 or higher. Update if needed.
+    </Warning>
+  </Step>
+</Steps>
+
+## Step 2: Install Dependencies
+
+```bash
+npm install
+```
+
+This installs the complete technology stack:
+
+<AccordionGroup>
+  <Accordion icon="react" title="Frontend Framework">
+    - **Next.js 15.2.4**: React framework with App Router
+    - **React 19**: Latest React with Server Components
+    - **TypeScript 5**: Type safety across the stack
+  </Accordion>
+
+  <Accordion icon="server" title="Backend & CMS">
+    - **Payload CMS 3.48**: Headless CMS with admin UI
+    - **@payloadcms/db-mongodb**: MongoDB adapter
+    - **@payloadcms/plugin-multi-tenant**: Multi-tenancy support
+    - **@payloadcms/richtext-lexical**: Rich text editor
+  </Accordion>
+
+  <Accordion icon="network-wired" title="API Layer">
+    - **tRPC 11.4**: End-to-end type-safe APIs
+    - **@tanstack/react-query 5.82**: Data fetching and caching
+    - **Zod 4.0**: Schema validation
+    - **SuperJSON 2.2**: Serialization with Date/Map support
+  </Accordion>
+
+  <Accordion icon="palette" title="UI Components">
+    - **shadcn/ui**: Radix UI primitives with Tailwind
+    - **Tailwind CSS v4**: Utility-first CSS framework
+    - **Lucide React**: Icon library
+    - **next-themes**: Dark mode support
+  </Accordion>
+
+  <Accordion icon="credit-card" title="Payments & Integrations">
+    - **Stripe SDK**: Payment processing (added separately)
+    - **date-fns**: Date manipulation
+    - **Zustand**: Global state management
+  </Accordion>
+</AccordionGroup>
+
+## Step 3: Database Setup
+
+### Option A: Local MongoDB
+
+<Steps>
+  <Step title="Install MongoDB">
+    <Tabs>
+      <Tab title="macOS">
+        ```bash
+        brew tap mongodb/brew
+        brew install mongodb-community@6.0
+        brew services start mongodb-community@6.0
+        ```
+      </Tab>
+      <Tab title="Ubuntu">
+        ```bash
+        wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key add -
+        echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
+        sudo apt-get update
+        sudo apt-get install -y mongodb-org
+        sudo systemctl start mongod
+        ```
+      </Tab>
+      <Tab title="Docker">
+        ```bash
+        docker run -d \
+          --name marketplace-mongo \
+          -p 27017:27017 \
+          -v mongodb_data:/data/db \
+          mongo:6.0
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Verify Connection">
+    ```bash
+    mongosh
+    # Should connect to mongodb://127.0.0.1:27017
+    ```
+  </Step>
+</Steps>
+
+### Option B: MongoDB Atlas (Cloud)
+
+<Steps>
+  <Step title="Create Cluster">
+    1. Sign up at [mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas)
+    2. Create a new cluster (free tier available)
+    3. Choose your cloud provider and region
+  </Step>
+
+  <Step title="Configure Access">
+    1. **Database Access**: Create a database user with read/write permissions
+    2. **Network Access**: Add your IP address (or `0.0.0.0/0` for development)
+  </Step>
+
+  <Step title="Get Connection String">
+    Click **Connect** → **Connect your application** → Copy the connection string:
+    ```
+    mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
+    ```
+  </Step>
+</Steps>
+
+## Step 4: Environment Configuration
+
+<Steps>
+  <Step title="Create .env File">
+    Create a `.env` file in the project root:
+    
+    ```bash
+    touch .env
+    ```
+  </Step>
+
+  <Step title="Add Configuration">
+    Copy and configure the following:
+    
+    ```bash .env
+    # ========================================
+    # Database Configuration
+    # ========================================
+    
+    # Local MongoDB
+    DATABASE_URI=mongodb://localhost:27017/multi-vendor-marketplace
+    
+    # Or MongoDB Atlas
+    # DATABASE_URI=mongodb+srv://username:password@cluster.xxxxx.mongodb.net/marketplace?retryWrites=true&w=majority
+    
+    # ========================================
+    # Payload CMS
+    # ========================================
+    
+    # Generate with: openssl rand -base64 32
+    PAYLOAD_SECRET=your-super-secret-key-min-32-characters
+    
+    # ========================================
+    # Next.js Configuration
+    # ========================================
+    
+    # Development
+    NEXT_PUBLIC_SERVER_URL=http://localhost:3000
+    
+    # Production
+    # NEXT_PUBLIC_SERVER_URL=https://yourmarketplace.com
+    
+    # ========================================
+    # Stripe Configuration (Production)
+    # ========================================
+    
+    # Get from: https://dashboard.stripe.com/apikeys
+    STRIPE_SECRET_KEY=sk_test_...
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+    
+    # Stripe Connect
+    STRIPE_CLIENT_ID=ca_...
+    
+    # Webhook signing secret (from Stripe dashboard)
+    STRIPE_WEBHOOK_SECRET=whsec_...
+    
+    # ========================================
+    # Optional: Email Configuration
+    # ========================================
+    
+    # SMTP_HOST=smtp.sendgrid.net
+    # SMTP_PORT=587
+    # SMTP_USER=apikey
+    # SMTP_PASS=your-sendgrid-api-key
+    # FROM_EMAIL=noreply@yourmarketplace.com
+    
+    # ========================================
+    # Optional: Storage (Production)
+    # ========================================
+    
+    # S3_BUCKET=marketplace-uploads
+    # S3_REGION=us-east-1
+    # S3_ACCESS_KEY_ID=AKIA...
+    # S3_SECRET_ACCESS_KEY=...
+    ```
+  </Step>
+
+  <Step title="Generate Secrets">
+    Generate a secure `PAYLOAD_SECRET`:
+    
+    ```bash
+    openssl rand -base64 32
+    ```
+    
+    Copy the output to your `.env` file.
+  </Step>
+</Steps>
+
+<Warning>
+  **Never commit `.env` to version control!** The file is already in `.gitignore`, but always verify before pushing.
+</Warning>
+
+## Step 5: Stripe Configuration
+
+<Info>
+  Stripe Connect enables multi-vendor payouts with automatic platform fee collection. This is essential for marketplace functionality.
+</Info>
+
+<Steps>
+  <Step title="Create Stripe Account">
+    1. Sign up at [stripe.com](https://stripe.com)
+    2. Complete account verification
+    3. Switch to **Test Mode** for development
+  </Step>
+
+  <Step title="Get API Keys">
+    Navigate to [Dashboard → API Keys](https://dashboard.stripe.com/apikeys):
+    
+    ```bash
+    STRIPE_SECRET_KEY=sk_test_51Xxxx...  # Starts with sk_test_
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_51Xxxx...  # Starts with pk_test_
+    ```
+  </Step>
+
+  <Step title="Enable Stripe Connect">
+    1. Go to [Dashboard → Connect → Settings](https://dashboard.stripe.com/settings/connect)
+    2. Click **Get Started**
+    3. Choose **Platform or Marketplace**
+    4. Configure your platform:
+       - **Platform Name**: Your Marketplace Name
+       - **Brand Color**: Your brand color
+       - **Icon**: Upload platform logo
+  </Step>
+
+  <Step title="Get Connect Client ID">
+    From Connect settings, copy the **Client ID**:
+    
+    ```bash
+    STRIPE_CLIENT_ID=ca_Xxxx...
+    ```
+  </Step>
+
+  <Step title="Configure Webhook">
+    Set up webhooks for payment events:
+    
+    1. Go to [Webhooks](https://dashboard.stripe.com/webhooks)
+    2. Click **Add endpoint**
+    3. **Endpoint URL**: `https://yourmarketplace.com/api/webhooks/stripe`
+    4. Select events:
+       - `payment_intent.succeeded`
+       - `payment_intent.payment_failed`
+       - `account.updated`
+       - `checkout.session.completed`
+    5. Copy the **Signing Secret**:
+    
+    ```bash
+    STRIPE_WEBHOOK_SECRET=whsec_Xxxx...
+    ```
+    
+    <Note>
+      For local development, use [Stripe CLI](https://stripe.com/docs/stripe-cli) to forward webhooks:
+      ```bash
+      stripe listen --forward-to localhost:3000/api/webhooks/stripe
+      ```
+    </Note>
+  </Step>
+</Steps>
+
+## Step 6: Initialize Database
+
+<Steps>
+  <Step title="Run Migrations">
+    Create database collections and indexes:
+    
+    ```bash
+    npm run db:fresh
+    ```
+    
+    This creates:
+    - `users` collection with auth indexes
+    - `tenants` collection with unique slug index
+    - `products` collection with tenant relationship
+    - `categories` collection with hierarchy support
+    - `tags` collection
+    - `media` collection for file uploads
+  </Step>
+
+  <Step title="Seed Initial Data (Optional)">
+    Populate with sample data for development:
+    
+    ```bash
+    npm run db:seed
+    ```
+    
+    Creates:
+    - Sample categories (Electronics, Fashion, Digital Products, etc.)
+    - A demo vendor account
+    - 10+ sample products with images
+    - Common tags
+  </Step>
+
+  <Step title="Generate TypeScript Types">
+    Generate types from Payload collections:
+    
+    ```bash
+    npm run generate:types
+    ```
+    
+    Creates `src/payload-types.ts` with:
+    
+    ```typescript
+    export interface User {
+      id: string;
+      email: string;
+      username: string;
+      roles: ('super-admin' | 'user')[];
+      tenants?: { tenant: string | Tenant }[];
+      // ... more fields
+    }
+    
+    export interface Tenant {
+      id: string;
+      name: string;
+      slug: string;
+      image?: string | Media;
+      stripeAccountId: string;
+      stripeDetailsSubmitted?: boolean;
+    }
+    
+    export interface Product {
+      id: string;
+      name: string;
+      description?: string;
+      price: number;
+      category?: string | Category;
+      tags?: (string | Tag)[];
+      image?: string | Media;
+      tenant?: string | Tenant;
+      refundPolicy: '30-day' | '14-day' | '7-day' | '3-day' | '1-day' | 'no-refunds';
+    }
+    ```
+  </Step>
+</Steps>
+
+## Step 7: Start Development Server
+
+```bash
+npm run dev
+```
+
+Your marketplace should now be running:
+
+<CardGroup cols={2}>
+  <Card title="Main Platform" icon="globe">
+    [http://localhost:3000](http://localhost:3000)
+  </Card>
+  <Card title="Admin Dashboard" icon="gauge">
+    [http://localhost:3000/admin](http://localhost:3000/admin)
+  </Card>
+  <Card title="tRPC API" icon="code">
+    [http://localhost:3000/api/trpc](http://localhost:3000/api/trpc)
+  </Card>
+  <Card title="GraphQL Playground" icon="play">
+    [http://localhost:3000/api/graphql-playground](http://localhost:3000/api/graphql-playground)
+  </Card>
+</CardGroup>
+
+<Check>
+  **Success!** Your development environment is ready. Open the main platform to see the marketplace in action.
+</Check>
+
+## Advanced Configuration
+
+### Subdomain Routing (Production)
+
+In production, vendors access their storefronts via subdomains (e.g., `vendor.yourmarketplace.com`).
+
+<Steps>
+  <Step title="Configure DNS Wildcard">
+    In your DNS provider (Cloudflare, Route53, etc.), add:
+    
+    ```
+    Type: CNAME
+    Name: *
+    Value: yourmarketplace.com
+    TTL: Auto
+    ```
+    
+    This routes all subdomains to your main domain.
+  </Step>
+
+  <Step title="Create Middleware">
+    Create `src/middleware.ts`:
+    
+    ```typescript src/middleware.ts
+    import { NextRequest, NextResponse } from "next/server";
+    
+    export function middleware(request: NextRequest) {
+      const hostname = request.headers.get("host") || "";
+      const url = request.nextUrl;
+      
+      // Extract subdomain
+      const subdomain = hostname.split(".")[0];
+      
+      // Skip www and main domain
+      if (subdomain === "www" || !subdomain || subdomain === "yourmarketplace") {
+        return NextResponse.next();
+      }
+      
+      // Rewrite to tenant route
+      const newUrl = new URL(`/tenants/${subdomain}${url.pathname}`, request.url);
+      return NextResponse.rewrite(newUrl);
+    }
+    
+    export const config = {
+      matcher: [
+        /*
+         * Match all request paths except:
+         * - api (API routes)
+         * - _next/static (static files)
+         * - _next/image (image optimization)
+         * - favicon.ico (favicon)
+         */
+        "/((?!api|_next/static|_next/image|favicon.ico).*)",
+      ],
+    };
+    ```
+  </Step>
+
+  <Step title="Update Environment">
+    ```bash
+    NEXT_PUBLIC_SERVER_URL=https://yourmarketplace.com
+    ```
+  </Step>
+</Steps>
+
+### File Upload Storage
+
+By default, files are stored locally. For production, configure S3:
+
+<Steps>
+  <Step title="Install S3 Plugin">
+    ```bash
+    npm install @payloadcms/plugin-cloud-storage @payloadcms/plugin-cloud-storage-s3
+    ```
+  </Step>
+
+  <Step title="Configure Payload">
+    Update `src/payload.config.ts`:
+    
+    ```typescript
+    import { s3Adapter } from "@payloadcms/plugin-cloud-storage/s3";
+    import { cloudStoragePlugin } from "@payloadcms/plugin-cloud-storage";
+    
+    export default buildConfig({
+      plugins: [
+        cloudStoragePlugin({
+          collections: {
+            media: {
+              adapter: s3Adapter({
+                config: {
+                  credentials: {
+                    accessKeyId: process.env.S3_ACCESS_KEY_ID || "",
+                    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || "",
+                  },
+                  region: process.env.S3_REGION || "us-east-1",
+                },
+                bucket: process.env.S3_BUCKET || "",
+              }),
+            },
+          },
+        }),
+        // ... other plugins
+      ],
+    });
+    ```
+  </Step>
+</Steps>
+
+### Email Notifications
+
+Configure SMTP for transactional emails:
+
+```typescript src/payload.config.ts
+import { buildConfig } from "payload";
+
+export default buildConfig({
+  email: {
+    transport: {
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT || "587"),
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    },
+    fromName: "Your Marketplace",
+    fromAddress: process.env.FROM_EMAIL || "noreply@yourmarketplace.com",
+  },
+  // ... rest of config
+});
+```
+
+## Production Deployment
+
+### Deploy to Vercel
+
+<Steps>
+  <Step title="Install Vercel CLI">
+    ```bash
+    npm install -g vercel
+    ```
+  </Step>
+
+  <Step title="Login to Vercel">
+    ```bash
+    vercel login
+    ```
+  </Step>
+
+  <Step title="Deploy">
+    ```bash
+    vercel --prod
+    ```
+    
+    Or connect your GitHub repository for automatic deployments.
+  </Step>
+
+  <Step title="Configure Environment Variables">
+    In Vercel dashboard, add all `.env` variables:
+    - `DATABASE_URI`
+    - `PAYLOAD_SECRET`
+    - `STRIPE_SECRET_KEY`
+    - `STRIPE_WEBHOOK_SECRET`
+    - etc.
+  </Step>
+
+  <Step title="Set Build Command">
+    In Vercel project settings:
+    ```
+    Build Command: npm run build
+    Output Directory: .next
+    Install Command: npm install
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  **Before Going Live**:
+  - Switch Stripe to Live mode
+  - Configure production MongoDB cluster
+  - Set up proper DNS with SSL
+  - Enable database backups
+  - Configure monitoring and error tracking
+</Warning>
+
+## Verification Checklist
+
+<Steps>
+  <Step title="Database Connection">
+    ✅ MongoDB is accessible
+    ✅ Collections are created
+    ✅ Sample data loads correctly
+  </Step>
+
+  <Step title="Application">
+    ✅ Development server starts without errors
+    ✅ Homepage loads at `localhost:3000`
+    ✅ Admin panel accessible at `/admin`
+    ✅ TypeScript types generated
+  </Step>
+
+  <Step title="Authentication">
+    ✅ Can register new account at `/sign-up`
+    ✅ Can sign in at `/sign-in`
+    ✅ Session persists across page reloads
+    ✅ Can access admin dashboard when authenticated
+  </Step>
+
+  <Step title="Tenant Functionality">
+    ✅ Tenant created automatically on registration
+    ✅ Can access vendor storefront at `/tenants/[slug]`
+    ✅ Products display correctly
+    ✅ Multi-tenant data isolation working
+  </Step>
+
+  <Step title="Stripe Integration">
+    ✅ Stripe keys configured in `.env`
+    ✅ Test payment flows in development
+    ✅ Webhooks forwarding (in production)
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion icon="database" title="Database Issues">
+    **Can't connect to MongoDB**
+    
+    ```bash
+    # Check if MongoDB is running
+    mongosh
+    
+    # Or for Atlas, test connection string
+    mongosh "mongodb+srv://..."
+    ```
+    
+    **Collections not created**
+    
+    ```bash
+    # Force recreate
+    npm run db:fresh
+    ```
+  </Accordion>
+
+  <Accordion icon="code" title="TypeScript Errors">
+    **Missing types for Payload collections**
+    
+    ```bash
+    # Regenerate types
+    npm run generate:types
+    
+    # Restart TypeScript server in VS Code
+    # CMD/CTRL + Shift + P → "TypeScript: Restart TS Server"
+    ```
+  </Accordion>
+
+  <Accordion icon="stripe" title="Stripe Errors">
+    **Invalid API key**
+    - Ensure you're using the correct mode (test vs live)
+    - Keys should start with `sk_test_` or `pk_test_` in development
+    
+    **Webhook signature verification failed**
+    - Use Stripe CLI for local development:
+      ```bash
+      stripe listen --forward-to localhost:3000/api/webhooks/stripe
+      ```
+    - Copy the webhook signing secret to `.env`
+  </Accordion>
+
+  <Accordion icon="image" title="File Upload Issues">
+    **Images not displaying**
+    - Check `NEXT_PUBLIC_SERVER_URL` is correct
+    - Verify `media` folder has write permissions
+    - For S3, check bucket permissions and CORS
+  </Accordion>
+
+  <Accordion icon="network-wired" title="API Errors">
+    **tRPC errors**
+    - Ensure database is connected
+    - Check browser console for error details
+    - Verify `src/trpc/routers/_app.ts` includes all routers
+    
+    **CORS errors**
+    - Update `NEXT_PUBLIC_SERVER_URL` to match your domain
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Documentation" icon="book" href="/api/overview">
+    Explore tRPC procedures and GraphQL schema
+  </Card>
+  <Card title="Development Guide" icon="paintbrush" href="/development/project-structure">
+    Understand the project structure and development workflow
+  </Card>
+  <Card title="Deployment" icon="rocket" href="/deployment/production-setup">
+    Production deployment best practices
+  </Card>
+  <Card title="Core Concepts" icon="shield" href="/concepts/architecture">
+    Learn about architecture and security patterns
+  </Card>
+</CardGroup>
+
+<Check>
+  **Installation Complete!** Your marketplace platform is fully configured and ready for development. Start building your next big marketplace!
+</Check>

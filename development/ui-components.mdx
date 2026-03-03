@@ -1,0 +1,643 @@
+---
+title: UI Components
+description: Using shadcn/ui components and building custom UI elements
+---
+
+The platform uses **shadcn/ui** - a collection of beautifully designed, accessible React components built with **Radix UI** and **Tailwind CSS**. All components are located in `src/components/ui/`.
+
+## Component Architecture
+
+shadcn/ui components are copied into your project (not installed as dependencies), giving you full control:
+
+```
+src/components/ui/
+├── button.tsx
+├── card.tsx
+├── dialog.tsx
+├── input.tsx
+├── select.tsx
+└── ... (46 total components)
+```
+
+## Installation & Configuration
+
+### components.json
+
+```json
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "default",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "tailwind.config.ts",
+    "css": "src/app/globals.css",
+    "baseColor": "slate",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui"
+  }
+}
+```
+
+### Utility Function
+
+All components use the `cn()` utility for className merging:
+
+```typescript
+// src/lib/utils.ts
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+```
+
+## Core Components
+
+### Button
+
+**Location**: `src/components/ui/button.tsx`
+
+```typescript
+import { Button } from "@/components/ui/button";
+
+<Button>Default</Button>
+<Button variant="destructive">Delete</Button>
+<Button variant="outline">Cancel</Button>
+<Button variant="ghost">Ghost</Button>
+<Button variant="link">Link</Button>
+<Button variant="elevated">Elevated</Button>
+
+<Button size="sm">Small</Button>
+<Button size="default">Default</Button>
+<Button size="lg">Large</Button>
+<Button size="icon"><Icon /></Button>
+```
+
+**Implementation**:
+
+```typescript
+const buttonVariants = cva(
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-base font-medium transition-all disabled:pointer-events-none disabled:opacity-50",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        destructive: "bg-destructive text-white hover:bg-destructive/90",
+        outline: "border bg-background hover:bg-accent",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
+        elevated: "bg-white hover:shadow-[4px_4px_0px_rgba(0,0,0,1)]",
+      },
+      size: {
+        default: "h-12 px-4 py-2",
+        sm: "h-10 rounded-md px-3",
+        lg: "h-12 rounded-md px-6",
+        icon: "size-9",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+);
+
+function Button({ className, variant, size, asChild = false, ...props }) {
+  const Comp = asChild ? Slot : "button";
+  return (
+    <Comp
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props}
+    />
+  );
+}
+```
+
+### Card
+
+**Location**: `src/components/ui/card.tsx`
+
+```typescript
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+  CardAction,
+} from "@/components/ui/card";
+
+<Card>
+  <CardHeader>
+    <CardTitle>Product Name</CardTitle>
+    <CardDescription>Product description</CardDescription>
+    <CardAction>
+      <Button>Action</Button>
+    </CardAction>
+  </CardHeader>
+  <CardContent>
+    <p>Card content goes here</p>
+  </CardContent>
+  <CardFooter>
+    <Button>Footer Button</Button>
+  </CardFooter>
+</Card>
+```
+
+**Implementation**:
+
+```typescript
+function Card({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      className={cn(
+        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
+function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      className={cn(
+        "grid auto-rows-min items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto]",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
+function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      className={cn("leading-none font-semibold", className)}
+      {...props}
+    />
+  );
+}
+```
+
+### Dialog
+
+**Location**: `src/components/ui/dialog.tsx`
+
+```typescript
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+
+<Dialog>
+  <DialogTrigger asChild>
+    <Button>Open Dialog</Button>
+  </DialogTrigger>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Confirm Action</DialogTitle>
+      <DialogDescription>
+        Are you sure you want to proceed?
+      </DialogDescription>
+    </DialogHeader>
+    <DialogFooter>
+      <Button variant="outline">Cancel</Button>
+      <Button>Confirm</Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+```
+
+**Key Features**:
+- Built on Radix UI Dialog primitive
+- Accessible (keyboard navigation, focus management)
+- Customizable close button with `showCloseButton` prop
+- Smooth animations
+
+### Input & Form Components
+
+<CodeGroup>
+```typescript Input
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+<div>
+  <Label htmlFor="email">Email</Label>
+  <Input id="email" type="email" placeholder="Enter email" />
+</div>
+```
+
+```typescript Select
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+
+<Select>
+  <SelectTrigger>
+    <SelectValue placeholder="Select category" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="electronics">Electronics</SelectItem>
+    <SelectItem value="clothing">Clothing</SelectItem>
+  </SelectContent>
+</Select>
+```
+
+```typescript Checkbox
+import { Checkbox } from "@/components/ui/checkbox";
+
+<div className="flex items-center gap-2">
+  <Checkbox id="terms" />
+  <Label htmlFor="terms">Accept terms</Label>
+</div>
+```
+</CodeGroup>
+
+## Available Components
+
+The platform includes 46 shadcn/ui components:
+
+<CardGroup cols={3}>
+  <Card title="Layout">
+    - Card
+    - Separator
+    - Tabs
+    - Collapsible
+    - Accordion
+    - Resizable
+  </Card>
+  
+  <Card title="Forms">
+    - Input
+    - Textarea
+    - Select
+    - Checkbox
+    - Radio Group
+    - Switch
+    - Slider
+    - Form
+    - Label
+  </Card>
+  
+  <Card title="Overlays">
+    - Dialog
+    - Alert Dialog
+    - Drawer
+    - Popover
+    - Tooltip
+    - Hover Card
+    - Sheet
+  </Card>
+  
+  <Card title="Navigation">
+    - Navigation Menu
+    - Menubar
+    - Dropdown Menu
+    - Context Menu
+    - Breadcrumb
+    - Pagination
+  </Card>
+  
+  <Card title="Feedback">
+    - Alert
+    - Toast (Sonner)
+    - Progress
+    - Skeleton
+    - Badge
+  </Card>
+  
+  <Card title="Data Display">
+    - Table
+    - Avatar
+    - Chart
+    - Calendar
+    - Carousel
+    - Aspect Ratio
+  </Card>
+</CardGroup>
+
+## Custom Components
+
+### StarRating Component
+
+**Location**: `src/components/star-rating.tsx`
+
+Example of a custom component built for the platform:
+
+```typescript
+import { Star } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface StarRatingProps {
+  rating: number;
+  maxRating?: number;
+  size?: number;
+  className?: string;
+}
+
+export function StarRating({
+  rating,
+  maxRating = 5,
+  size = 16,
+  className,
+}: StarRatingProps) {
+  return (
+    <div className={cn("flex gap-1", className)}>
+      {Array.from({ length: maxRating }).map((_, i) => (
+        <Star
+          key={i}
+          size={size}
+          className={cn(
+            i < rating
+              ? "fill-yellow-400 text-yellow-400"
+              : "fill-gray-200 text-gray-200"
+          )}
+        />
+      ))}
+    </div>
+  );
+}
+```
+
+## Component Patterns
+
+### Composition Pattern
+
+Components are designed for composition:
+
+```typescript
+// Good: Composable
+<Card>
+  <CardHeader>
+    <CardTitle>Title</CardTitle>
+  </CardHeader>
+  <CardContent>Content</CardContent>
+</Card>
+
+// Avoid: Monolithic props
+<Card title="Title" content="Content" />
+```
+
+### Polymorphic Components
+
+Use `asChild` to change the underlying element:
+
+```typescript
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+
+// Renders as <a> instead of <button>
+<Button asChild>
+  <Link href="/products">View Products</Link>
+</Button>
+```
+
+### Controlled Components
+
+```typescript
+import { useState } from "react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+
+function Example() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent>
+        {/* Dialog content */}
+      </DialogContent>
+    </Dialog>
+  );
+}
+```
+
+## Styling
+
+### Tailwind CSS
+
+Components use Tailwind CSS utility classes:
+
+```typescript
+<Button className="w-full bg-blue-500 hover:bg-blue-600">
+  Custom Styled Button
+</Button>
+```
+
+### CSS Variables
+
+Theme colors are defined as CSS variables:
+
+```css
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --primary: 222.2 47.4% 11.2%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  /* ... */
+}
+```
+
+### Dark Mode
+
+Components support dark mode via `next-themes`:
+
+```typescript
+import { ThemeProvider } from "next-themes";
+
+<ThemeProvider attribute="class" defaultTheme="system">
+  <App />
+</ThemeProvider>
+```
+
+## Form Handling
+
+### With React Hook Form
+
+```typescript
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+
+const formSchema = z.object({
+  name: z.string().min(2),
+  email: z.string().email(),
+});
+
+function ProductForm() {
+  const form = useForm({
+    resolver: zodResolver(formSchema),
+  });
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Name</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit">Submit</Button>
+      </form>
+    </Form>
+  );
+}
+```
+
+## Icons
+
+The platform uses **lucide-react** for icons:
+
+```typescript
+import { ShoppingCart, User, Settings, Search } from "lucide-react";
+
+<Button>
+  <ShoppingCart className="mr-2" />
+  Add to Cart
+</Button>
+```
+
+## Accessibility
+
+All shadcn/ui components are built with accessibility in mind:
+
+- **Keyboard Navigation**: Full keyboard support
+- **Screen Readers**: Proper ARIA attributes
+- **Focus Management**: Logical focus flow
+- **Color Contrast**: WCAG compliant colors
+
+```typescript
+// Example: Accessible Dialog
+<Dialog>
+  <DialogTrigger>Open</DialogTrigger>
+  <DialogContent>
+    <DialogTitle>Title</DialogTitle>  {/* Required for screen readers */}
+    <DialogDescription>Description</DialogDescription>
+  </DialogContent>
+</Dialog>
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Component Imports">
+    Always import from `@/components/ui/*` using the path alias:
+    
+    ```typescript
+    // Good
+    import { Button } from "@/components/ui/button";
+    
+    // Avoid
+    import { Button } from "../../components/ui/button";
+    ```
+  </Accordion>
+  
+  <Accordion title="Customization">
+    Use the `className` prop for customization:
+    
+    ```typescript
+    <Button className="w-full mt-4">
+      Full Width Button
+    </Button>
+    ```
+  </Accordion>
+  
+  <Accordion title="Variants">
+    Leverage built-in variants before creating custom styles:
+    
+    ```typescript
+    <Button variant="outline" size="sm">
+      Small Outline Button
+    </Button>
+    ```
+  </Accordion>
+  
+  <Accordion title="Accessibility">
+    Always include labels and descriptions:
+    
+    ```typescript
+    <Label htmlFor="email">Email</Label>
+    <Input id="email" aria-describedby="email-description" />
+    <p id="email-description">We'll never share your email</p>
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Utility Functions
+
+```typescript
+// src/lib/utils.ts
+
+// Class name merging
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+// Tenant URL generation
+export function generateTenantURL(tenantSlug: string) {
+  return `/tenants/${tenantSlug}`;
+}
+
+// Currency formatting
+export function formatCurrency(value: number | string) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(Number(value));
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Project Structure" icon="folder" href="/development/project-structure">
+    Understand where components fit
+  </Card>
+  <Card title="shadcn/ui Docs" icon="book" href="https://ui.shadcn.com">
+    Explore all available components
+  </Card>
+</CardGroup>

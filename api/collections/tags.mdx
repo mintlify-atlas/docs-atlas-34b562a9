@@ -1,0 +1,80 @@
+---
+title: Tags Collection
+description: Flexible tagging system for product organization
+---
+
+## Overview
+
+The Tags collection provides a flexible tagging system for products, enabling multiple classification dimensions beyond hierarchical categories.
+
+## Collection Configuration
+
+- **Slug**: `tags`
+- **Admin Title Field**: `name`
+
+## Fields
+
+<ParamField path="name" type="text" required>
+  The tag name or label.
+  
+  - **Unique**: Yes (tag names must be unique)
+</ParamField>
+
+<ParamField path="products" type="relationship">
+  Products associated with this tag.
+  
+  - **Relation**: `products` collection
+  - **Multiple**: Yes (many products)
+</ParamField>
+
+## Relationships
+
+- **products**: Many-to-many relationship with `products` collection
+- **Referenced by**: Products collection (via tags field)
+
+## Access Control
+
+No explicit access control defined in the schema. Uses Payload's default access patterns.
+
+## Source Schema
+
+```typescript
+import type { CollectionConfig } from "payload";
+
+export const Tags: CollectionConfig = {
+  slug: "tags",
+  admin: {
+    useAsTitle: "name",
+  },
+  fields: [
+    {
+      name: "name",
+      type: "text",
+      required: true,
+      unique: true,
+    },
+    {
+      name: "products",
+      type: "relationship",
+      relationTo: "products",
+      hasMany: true,
+    },
+  ],
+};
+```
+
+## Key Features
+
+- **Unique Tags**: Each tag name must be unique across the system
+- **Many-to-many**: Products can have multiple tags, tags can have multiple products
+- **Bidirectional**: The products relationship allows querying from either direction
+- **Simple Schema**: Minimal fields for maximum flexibility
+
+## Usage Patterns
+
+Tags are commonly used for:
+
+- Product features (e.g., "wireless", "waterproof")
+- Seasonal markers (e.g., "summer-sale", "holiday")
+- Special attributes (e.g., "best-seller", "new-arrival")
+- Cross-cutting concerns that don't fit hierarchical categories

@@ -1,0 +1,303 @@
+---
+title: 'API Overview'
+description: 'Learn about the tRPC + Payload architecture powering the marketplace API'
+---
+
+## Architecture
+
+The marketplace API is built with a modern, type-safe stack:
+
+- **tRPC** - End-to-end typesafe APIs with TypeScript
+- **Payload CMS** - Headless CMS and database layer
+- **Next.js App Router** - API routing and server-side rendering
+- **Zod** - Runtime schema validation
+- **SuperJSON** - Enhanced data serialization (supports Date, Map, Set, etc.)
+- **TanStack Query** - Client-side data fetching and caching
+
+## How It Works
+
+### Server-Side Architecture
+
+The API is organized into modular routers, each handling a specific domain:
+
+```typescript
+// src/trpc/routers/_app.ts
+export const appRouter = createTRPCRouter({
+  auth: authRouter,
+  products: productsRouter,
+  tenants: tenantsRouter,
+  checkout: checkoutRouter,
+  categories: categoriesRouter,
+  tags: tagsRouter,
+});
+
+export type AppRouter = typeof appRouter;
+```
+
+Each router is defined using procedures that can be either:
+- **Queries** - For fetching data (GET operations)
+- **Mutations** - For modifying data (POST/PUT/DELETE operations)
+
+### Base Procedure
+
+All procedures share a common context that provides access to the Payload database:
+
+```typescript
+// src/trpc/init.ts
+export const baseProcedure = t.procedure.use(async ({ next }) => {
+  const payload = await getPayload({ config });
+  return next({ ctx: { db: payload } });
+});
+```
+
+This middleware injects the Payload instance into every procedure's context, allowing direct database access.
+
+### API Routing
+
+The API is exposed via Next.js App Router at `/api/trpc`:
+
+```typescript
+// src/app/(app)/api/trpc/[trpc]/route.ts
+import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
+import { createTRPCContext } from "@/trpc/init";
+import { appRouter } from "@/trpc/routers/_app";
+
+const handler = (req: Request) =>
+  fetchRequestHandler({
+    endpoint: "/api/trpc",
+    req,
+    router: appRouter,
+    createContext: createTRPCContext,
+  });
+
+export { handler as GET, handler as POST };
+```
+
+## Type Safety
+
+One of tRPC's biggest advantages is end-to-end type safety:
+
+1. **Input Validation** - Zod schemas validate and type inputs
+2. **Context Typing** - Database context is fully typed
+3. **Return Types** - Response types are inferred automatically
+4. **Client Types** - Client automatically knows all available procedures and their types
+
+### Example: Products Router
+
+```typescript
+// src/modules/products/server/procedures.ts
+export const productsRouter = createTRPCRouter({
+  getOne: baseProcedure
+    .input(
+      z.object({
+        id: z.string(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const product = await ctx.db.findByID({
+        collection: "products",
+        id: input.id,
+        depth: 2,
+      });
+
+      return {
+        ...product,
+        image: product.image as Media | null,
+        tenant: product.tenant as Tenant & { image: Media | null },
+      };
+    }),
+
+  getMany: baseProcedure
+    .input(
+      z.object({
+        cursor: z.number().default(1),
+        limit: z.number().default(DEFAULT_LIMIT),
+        category: z.string().nullable().optional(),
+        minPrice: z.string().nullable().optional(),
+        maxPrice: z.string().nullable().optional(),
+        tags: z.array(z.string()).nullable().optional(),
+        sort: z.enum(["curated", "hot_and_new", "trending"]).nullable().optional(),
+        tenantSlug: z.string().nullable().optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const data = await ctx.db.find({
+        collection: "products",
+        depth: 2,
+        where: buildWhereClause(input),
+        sort: buildSortClause(input.sort),
+        page: input.cursor,
+        limit: input.limit,
+      });
+
+      return {
+        ...data,
+        docs: data.docs.map((doc) => ({
+          ...doc,
+          image: doc.image as Media | null,
+          tenant: doc.tenant as Tenant & { image: Media | null },
+        })),
+      };
+    }),
+});
+```
+
+## Client Usage
+
+### React Components (Client-Side)
+
+Use the `useTRPC` hook for client-side data fetching:
+
+```tsx
+"use client";
+import { useTRPC } from "@/trpc/client";
+
+export function ProductList() {
+  const { data, isLoading } = useTRPC.products.getMany.useQuery({
+    limit: 12,
+    category: "electronics",
+    sort: "trending",
+  });
+
+  if (isLoading) return <div>Loading...</div>;
+
+  return (
+    <div>
+      {data?.docs.map((product) => (
+        <div key={product.id}>
+          <h3>{product.name}</h3>
+          <p>${product.price}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+### Server Components
+
+For server-side rendering, use the server-side caller:
+
+```tsx
+import { trpc } from "@/trpc/server";
+
+export default async function ProductPage({ params }: { params: { id: string } }) {
+  const product = await trpc.products.getOne({
+    id: params.id,
+  });
+
+  return (
+    <div>
+      <h1>{product.name}</h1>
+      <p>{product.description}</p>
+      <p>${product.price}</p>
+    </div>
+  );
+}
+```
+
+### Mutations
+
+For modifying data, use mutations:
+
+```tsx
+"use client";
+import { useTRPC } from "@/trpc/client";
+
+export function LoginForm() {
+  const login = useTRPC.auth.login.useMutation();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData(e.target as HTMLFormElement);
+
+    await login.mutateAsync({
+      email: formData.get("email") as string,
+      password: formData.get("password") as string,
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input type="email" name="email" required />
+      <input type="password" name="password" required />
+      <button type="submit" disabled={login.isPending}>
+        {login.isPending ? "Logging in..." : "Login"}
+      </button>
+      {login.error && <p>Error: {login.error.message}</p>}
+    </form>
+  );
+}
+```
+
+## Data Serialization
+
+The API uses SuperJSON for enhanced serialization, allowing you to pass complex types:
+
+```typescript
+// SuperJSON automatically handles:
+// - Date objects
+// - Map and Set
+// - BigInt
+// - RegExp
+// - undefined (in objects)
+// - NaN, Infinity, -Infinity
+
+const data = await trpc.orders.getOne({ id: "123" });
+// data.createdAt is a real Date object, not a string!
+console.log(data.createdAt instanceof Date); // true
+```
+
+## Error Handling
+
+tRPC uses typed errors that are automatically propagated to the client:
+
+```typescript
+// Server-side
+import { TRPCError } from "@trpc/server";
+
+if (!user) {
+  throw new TRPCError({
+    code: "UNAUTHORIZED",
+    message: "You must be logged in",
+  });
+}
+
+// Client-side
+const { error } = useTRPC.auth.session.useQuery();
+if (error?.data?.code === "UNAUTHORIZED") {
+  // Handle unauthorized error
+}
+```
+
+## Provider Setup
+
+Wrap your app with the TRPCReactProvider:
+
+```tsx
+// app/layout.tsx
+import { TRPCReactProvider } from "@/trpc/client";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html>
+      <body>
+        <TRPCReactProvider>{children}</TRPCReactProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+## Available Routers
+
+The API exposes the following routers:
+
+- **auth** - Authentication and session management
+- **products** - Product catalog operations
+- **tenants** - Multi-vendor tenant management
+- **checkout** - Order and payment processing
+- **categories** - Product categorization
+- **tags** - Product tagging system
+
+Each router contains multiple procedures for querying and mutating data. See the individual router documentation for details.

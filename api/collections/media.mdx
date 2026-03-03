@@ -1,0 +1,102 @@
+---
+title: Media Collection
+description: File upload and media asset management
+---
+
+## Overview
+
+The Media collection handles file uploads and media asset management for the marketplace, including product images, tenant logos, and other uploaded files.
+
+## Collection Configuration
+
+- **Slug**: `media`
+- **Upload**: Enabled (this is an upload collection)
+
+## Fields
+
+<ParamField path="alt" type="text" required>
+  Alternative text for the media asset (important for accessibility and SEO).
+</ParamField>
+
+### Auto-generated Upload Fields
+
+Payload automatically adds the following fields to upload collections:
+
+<ParamField path="filename" type="text">
+  The original filename of the uploaded file.
+</ParamField>
+
+<ParamField path="mimeType" type="text">
+  The MIME type of the uploaded file (e.g., "image/jpeg", "image/png").
+</ParamField>
+
+<ParamField path="filesize" type="number">
+  Size of the file in bytes.
+</ParamField>
+
+<ParamField path="width" type="number">
+  Image width in pixels (for image files).
+</ParamField>
+
+<ParamField path="height" type="number">
+  Image height in pixels (for image files).
+</ParamField>
+
+<ParamField path="url" type="text">
+  Public URL to access the uploaded file.
+</ParamField>
+
+## Relationships
+
+- **Referenced by**:
+  - Tenants collection (via image field)
+  - Products collection (via image field)
+
+## Access Control
+
+- **Read**: `() => true` (public read access)
+- Other operations use default access patterns
+
+## Source Schema
+
+```typescript
+import type { CollectionConfig } from 'payload'
+
+export const Media: CollectionConfig = {
+  slug: 'media',
+  access: {
+    read: () => true,
+  },
+  fields: [
+    {
+      name: 'alt',
+      type: 'text',
+      required: true,
+    },
+  ],
+  upload: true,
+}
+```
+
+## Key Features
+
+- **Upload Enabled**: Full file upload support
+- **Public Read**: All media is publicly accessible
+- **Accessibility**: Required alt text for images
+- **Auto Metadata**: Automatic extraction of file metadata
+- **Multi-use**: Referenced by multiple collections
+
+## Usage Patterns
+
+The Media collection is used for:
+
+- **Product Images**: Main product photos and galleries
+- **Tenant Branding**: Store logos and branding assets
+- **General Uploads**: Any file upload needs in the marketplace
+
+## Storage Considerations
+
+- Files are typically stored in the configured upload directory
+- The `url` field provides the public-facing URL
+- Image dimensions are automatically calculated and stored
+- MIME type validation can be configured in Payload config

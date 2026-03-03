@@ -1,0 +1,243 @@
+---
+title: Project Structure
+description: Understanding the codebase organization of the multi-vendor marketplace platform
+---
+
+This multi-vendor marketplace is built with **Next.js 15**, **Payload CMS 3**, **tRPC**, and **shadcn/ui**. The project follows a modular architecture with clear separation of concerns.
+
+## Directory Overview
+
+```
+src/
+├── app/                    # Next.js App Router
+│   ├── (app)/             # Main application routes
+│   │   ├── (auth)/        # Authentication pages
+│   │   ├── (home)/        # Public marketing pages
+│   │   ├── (tenants)/     # Vendor store pages
+│   │   └── api/trpc/      # tRPC API endpoints
+│   └── (payload)/         # Payload CMS admin
+├── collections/            # Payload CMS collections
+├── components/            # React components
+│   └── ui/               # shadcn/ui components
+├── hooks/                # Custom React hooks
+├── lib/                  # Utility functions
+├── modules/              # Feature modules
+│   ├── auth/            # Authentication
+│   ├── categories/      # Category management
+│   ├── checkout/        # Shopping cart & checkout
+│   ├── home/           # Homepage components
+│   ├── products/       # Product catalog
+│   ├── tags/           # Product tags
+│   └── tenants/        # Vendor stores
+└── trpc/                # tRPC configuration
+    └── routers/         # API routers
+```
+
+## App Router Structure
+
+The application uses Next.js App Router with route groups for organization:
+
+### (app) Route Group
+
+Main application routes accessible to users:
+
+- **(auth)/** - Sign in and sign up pages at `/sign-in` and `/sign-up`
+- **(home)/** - Public pages like homepage, about, features, pricing, and category browsing
+- **(tenants)/tenants/[slug]/** - Individual vendor storefronts with dynamic routing
+  - `(home)/` - Store homepage and product listing
+  - `(checkout)/` - Shopping cart and checkout flow
+
+### (payload) Route Group
+
+Payload CMS admin interface and APIs:
+
+- **admin/[[...segments]]/** - CMS admin dashboard at `/admin`
+- **api/[...slug]/** - Payload REST API
+- **api/graphql/** - Payload GraphQL API
+- **api/graphql-playground/** - GraphQL playground interface
+
+### tRPC API Routes
+
+Type-safe API endpoints:
+
+```typescript
+// src/app/(app)/api/trpc/[trpc]/route.ts
+import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
+import { createTRPCContext } from "@/trpc/init";
+import { appRouter } from "@/trpc/routers/_app";
+
+const handler = (req: Request) =>
+  fetchRequestHandler({
+    endpoint: "/api/trpc",
+    req,
+    router: appRouter,
+    createContext: createTRPCContext,
+  });
+
+export { handler as GET, handler as POST };
+```
+
+## Module Architecture
+
+Each feature module follows a consistent structure:
+
+```
+modules/[feature]/
+├── server/
+│   └── procedures.ts    # tRPC procedures
+├── ui/
+│   ├── components/     # Feature-specific components
+│   └── views/          # Page-level views
+├── hooks/              # Feature-specific hooks
+└── store/              # State management (Zustand)
+```
+
+### Available Modules
+
+<CardGroup cols={2}>
+  <Card title="auth" icon="lock">
+    User authentication with sign in/up flows
+  </Card>
+  <Card title="categories" icon="folder">
+    Hierarchical product categorization
+  </Card>
+  <Card title="checkout" icon="cart-shopping">
+    Shopping cart and checkout process
+  </Card>
+  <Card title="home" icon="house">
+    Homepage and marketing pages
+  </Card>
+  <Card title="products" icon="box">
+    Product catalog and search
+  </Card>
+  <Card title="tags" icon="tag">
+    Product tagging system
+  </Card>
+  <Card title="tenants" icon="store">
+    Multi-vendor store management
+  </Card>
+</CardGroup>
+
+## Key Technologies
+
+<CodeGroup>
+```json package.json (Core Dependencies)
+{
+  "dependencies": {
+    "next": "15.2.4",
+    "react": "^19.0.0",
+    "payload": "^3.48.0",
+    "@payloadcms/db-mongodb": "^3.48.0",
+    "@payloadcms/plugin-multi-tenant": "^3.48.0",
+    "@trpc/server": "^11.4.3",
+    "@trpc/client": "^11.4.3",
+    "@tanstack/react-query": "^5.82.0",
+    "zod": "^4.0.2",
+    "tailwindcss": "^4"
+  }
+}
+```
+</CodeGroup>
+
+## Configuration Files
+
+### Payload CMS Configuration
+
+Located at `src/payload.config.ts` - see [Payload CMS](/development/payload-cms) for details.
+
+### Next.js Configuration
+
+```typescript
+// next.config.ts
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  // Configuration options
+};
+
+export default nextConfig;
+```
+
+### TypeScript Configuration
+
+```json
+// tsconfig.json
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@payload-config": ["./src/payload.config.ts"]
+    }
+  }
+}
+```
+
+## Build Scripts
+
+```bash
+# Development
+npm run dev
+
+# Production build
+npm run build
+npm start
+
+# Linting
+npm run lint
+
+# Payload CMS
+npm run generate:types  # Generate TypeScript types
+npm run db:fresh        # Reset database
+npm run db:seed         # Seed database
+```
+
+## Path Aliases
+
+The project uses TypeScript path aliases for cleaner imports:
+
+- `@/*` - Maps to `src/*`
+- `@payload-config` - Maps to `src/payload.config.ts`
+
+```typescript
+// Instead of relative imports
+import { Button } from "../../components/ui/button";
+
+// Use path aliases
+import { Button } from "@/components/ui/button";
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Payload CMS" icon="database" href="/development/payload-cms">
+    Learn about collections and configuration
+  </Card>
+  <Card title="tRPC API" icon="code" href="/development/trpc-api">
+    Explore the type-safe API layer
+  </Card>
+  <Card title="Database Schema" icon="table" href="/development/database-schema">
+    Understand data models and relationships
+  </Card>
+  <Card title="UI Components" icon="palette" href="/development/ui-components">
+    Use shadcn/ui components
+  </Card>
+</CardGroup>
